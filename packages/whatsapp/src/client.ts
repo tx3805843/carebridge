@@ -45,6 +45,10 @@ export class WhatsappClient {
     }
 
     const body = (await res.json()) as { messages: { id: string }[] };
-    return { messageId: body.messages[0].id };
+    const message = body.messages[0];
+    if (!message) {
+      throw new Error("WhatsApp send succeeded but response had no message id");
+    }
+    return { messageId: message.id };
   }
 }

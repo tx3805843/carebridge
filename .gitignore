@@ -33,3 +33,4 @@ pnpm-debug.log*
 # misc
 *.tsbuildinfo
 coverage/
+next-env.d.ts
