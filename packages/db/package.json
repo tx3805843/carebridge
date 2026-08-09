@@ -1,0 +1,13 @@
+{
+  "name": "@carebridge/db",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "migrate:new": "supabase migration new",
+    "migrate:up": "supabase db push",
+    "migrate:dry-run": "supabase db push --dry-run",
+    "seed": "node ./seed/run.mjs",
+    "types:generate": "supabase gen types typescript --local > ../domain/src/generated.ts",
+    "rls:check": "node ./scripts/check-rls-coverage.mjs"
+  }
+}

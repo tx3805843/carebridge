@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "CareBridge Field",
+    "slug": "carebridge-field-app",
+    "scheme": "carebridge-field",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "platforms": ["android", "ios"],
+    "android": {
+      "package": "com.carebridge.field"
+    },
+    "ios": {
+      "bundleIdentifier": "com.carebridge.field"
+    },
+    "plugins": ["expo-router"]
+  }
+}

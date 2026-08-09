@@ -1,0 +1,16 @@
+{
+  "name": "@carebridge/config",
+  "private": true,
+  "version": "0.0.0",
+  "main": "index.js",
+  "files": [
+    "eslint-preset.js",
+    "tailwind-preset.js",
+    "tsconfig.base.json",
+    "tsconfig.nextjs.json",
+    "tsconfig.react-native.json"
+  ],
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

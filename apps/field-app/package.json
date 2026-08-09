@@ -1,0 +1,25 @@
+{
+  "name": "@carebridge/field-app",
+  "private": true,
+  "version": "0.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@carebridge/domain": "workspace:*",
+    "@journeyapps/powersync-sdk-react-native": "^1.11.0",
+    "expo": "~51.0.0",
+    "expo-router": "~3.5.0",
+    "react": "^18.3.0",
+    "react-native": "0.74.5"
+  },
+  "devDependencies": {
+    "@carebridge/config": "workspace:*",
+    "@types/react": "^18.3.0",
+    "typescript": "^5.5.0"
+  }
+}
