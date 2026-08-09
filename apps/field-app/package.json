@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@carebridge/domain": "workspace:*",
-    "@journeyapps/powersync-sdk-react-native": "^1.11.0",
+    "@journeyapps/powersync-sdk-react-native": "^1.4.2",
     "expo": "~51.0.0",
     "expo-router": "~3.5.0",
     "react": "^18.3.0",
