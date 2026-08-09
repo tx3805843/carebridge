@@ -12,11 +12,18 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Push migrations
-        run: supabase db push
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      - name: Push migrations
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
   deploy-functions:
     runs-on: ubuntu-latest
@@ -26,6 +33,12 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       - name: Deploy edge functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
         env:
