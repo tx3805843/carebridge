@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AUTHORITY_TYPES, CONSENT_SCOPES } from "./constants";
 
@@ -18,12 +19,8 @@ export async function grantAuthority(clientId: string, formData: FormData) {
     redirect(`/clients/${clientId}?error=${encodeURIComponent("A sponsor and valid authority type are required.")}`);
   }
 
+  const staffUser = await requireStaffUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
 
   const { error } = await supabase.from("authority_grant").insert({
     client_id: clientId,
@@ -34,7 +31,7 @@ export async function grantAuthority(clientId: string, formData: FormData) {
     effective_from: effectiveFrom || null,
     effective_until: effectiveUntil || null,
     granted_at: new Date().toISOString(),
-    granted_by: user.id,
+    granted_by: staffUser.id,
   });
 
   if (error) {
@@ -51,16 +48,12 @@ export async function revokeAuthority(clientId: string, formData: FormData) {
     redirect(`/clients/${clientId}?error=${encodeURIComponent("Missing authority grant.")}`);
   }
 
+  const staffUser = await requireStaffUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
 
   const { error } = await supabase
     .from("authority_grant")
-    .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: user.id })
+    .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: staffUser.id })
     .eq("id", authorityGrantId);
 
   if (error) {
