@@ -8,8 +8,7 @@
 --   a0000000-...-00000000000X  auth.users / user            (X = 0-9,a-f, 16 people)
 --   b0000000-...-00000000000N  client                        (N = 1-5)
 --   c0000000-...-00000000000N  provider                      (N = 1-6)
---   d0000000-...-000000000001  zone_id placeholder (Domain 4 doesn't exist yet — see Domain 2
---                               migration's design note on client.zone_id)
+--   d0000000-...-000000000001  zone (Domain 4)
 --   e1..e9 000000-...           one prefix per detail table (care_plan, consent_record,
 --                               credential, credential_verification_event,
 --                               identity_verification, background_check, training_record,
@@ -37,6 +36,14 @@ insert into auth.users (id, email, raw_user_meta_data, instance_id, aud, role) v
   ('a000000d-0000-0000-0000-00000000000d', 'abena.owusu@example.com', jsonb_build_object('full_name', 'Abena Owusu-Serwaa', 'phone', '+233244000013'), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
   ('a000000e-0000-0000-0000-00000000000e', 'nii.adjei@example.com', jsonb_build_object('full_name', 'Nii Adjei', 'phone', '+233244000014'), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
   ('a000000f-0000-0000-0000-00000000000f', 'akosua.nyarko@example.ca', jsonb_build_object('full_name', 'Akosua Nyarko', 'phone', '+16135550001'), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated')
+on conflict (id) do nothing;
+
+-- ── Zone (Domain 4) ──────────────────────────────────────────────────────────────────
+-- Single zone at pilot scale; client.zone_id below now has a real FK target
+-- (client_zone_id_fkey, added in the Domain 4 migration).
+
+insert into zone (id, name, created_by) values
+  ('d0000000-0000-0000-0000-000000000001', 'Accra Central', 'a0000000-0000-0000-0000-000000000001')
 on conflict (id) do nothing;
 
 -- ── Clients ──────────────────────────────────────────────────────────────────────────

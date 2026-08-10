@@ -3,7 +3,7 @@
 **This is a living file — read it first, every session; update it last, every session.**
 Companion to `carebridge-architecture-and-build-prompt.md` (the stable design brief — read that only for "why," not "what's next"). Move this file to `docs/ROADMAP.md` once the repo is scaffolded (Phase 0).
 
-Last updated: 2026-08-09 — Phase 0 schema + seed work is complete (all Domains 1-3 & 9, 22 tables, all RLS-verified against real local Postgres; `supabase/seed.sql` fixtures in place). Two external blockers remain before Phase 1 can unlock: no hosted Supabase project provisioned yet, and CI has never run (GitHub account `tx3805843` is suspended, blocking `git push`) — see changelog and "Open questions" for detail.
+Last updated: 2026-08-09 — **Phase 0 complete, Phase 1 (Ops MVP: WhatsApp + Console) unlocked.** All exit criteria checked: schema+RLS live on hosted `carebridge` (22 tables), CI green on all 6 workflows, credential_type seeded, audit triggers verified. Phase 1 epics not yet broken into stories.
 
 ---
 
@@ -17,10 +17,11 @@ Last updated: 2026-08-09 — Phase 0 schema + seed work is complete (all Domains
 
 ---
 
-## Current phase: Phase 0 — Foundations & Compliance Readiness
+## Phase 0 — Foundations & Compliance Readiness — **COMPLETE**
 
-**Status:** Not started
-**Started:** —
+**Status:** Complete
+**Started:** 2026-08-09
+**Completed:** 2026-08-09
 **Target:** Weeks 1-4 (see architecture brief, Part 5)
 
 ### Exit criteria (must all be true before Phase 1 unlocks)
@@ -69,8 +70,10 @@ Last updated: 2026-08-09 — Phase 0 schema + seed work is complete (all Domains
 
 ---
 
-## Phase 1 — Ops MVP: "WhatsApp + Console" — **LOCKED until Phase 0 exit criteria are checked**
+## Current phase: Phase 1 — Ops MVP: "WhatsApp + Console"
 
+**Status:** Unlocked
+**Started:** 2026-08-09
 **Target:** Weeks 3-10
 
 ### Exit criteria (must all be true before Phase 2 unlocks)
@@ -79,13 +82,23 @@ Last updated: 2026-08-09 — Phase 0 schema + seed work is complete (all Domains
 - [ ] At least one full pilot-family cycle (onboarding → scheduled visits → visit logging → family notification → payment) completed end-to-end without a manual workaround
 
 ### Checklist (epics — expand into stories at phase kickoff per architecture brief Part 5)
-- [ ] Epic: Coordinator console (client onboarding, care plan, visit scheduling, manual visit logging, exception queue)
+- Epic: Coordinator console (ops-console app) — broken into stories 2026-08-09, ordered by real schema dependency (Domain 4/7 don't exist yet, brief Part 5's 4 stories assumed they did):
+  - [ ] Story 1 (worker-tier — CRUD on already-designed tables): Client onboarding UI — create `client` + `care_plan` + `decision_maker_hierarchy` + `emergency_contact` via ops-console form. Schema already live (Domain 2). Acceptance: coordinator completes onboarding for one client end-to-end in console; RLS respected (staff-write, sponsor-read per consent).
+  - [x] Story 2 (supervisor-tier — schema/RLS authorship, full review): Domain 4 schema — `zone`, `roster`, `visit`, `visit_checkin`, `observation`, `task` + RLS (`supabase/migrations/20260809190000_domain4_scheduling_visit_ops.sql`). Also backfills the `client.zone_id` FK (parked in "Open questions" since Domain 2). `visit_checkin` never stores raw coordinates (zone-level only), so there's no raw trail to purge by construction — the actual continuous/purge-on-completion `live_visit_tracking` table is Domain 5/Phase 2, not this one. Structural fields (visit schedule/status, checkin events) are linked-sponsor-visible without consent, matching the Domain 2 client/emergency_contact precedent; clinical fields (observation, task) require `has_consent(..., 'clinical_detail')`, matching care_plan. New helpers `internal.can_view_visit_structural`/`internal.can_view_visit_clinical` created directly in `internal` (not `public`, avoiding the PostgREST-RPC-exposure class of bug fixed in `20260809180000`).
+  - [ ] Story 3 (supervisor-tier — escalation/alert-routing is a CLAUDE.md supervisor-only item): Domain 7 schema — `escalation`, `alert_rule` (+ `notification`, `whatsapp_message_log`, shared with the WhatsApp epic) + RLS. Blocks stories 5-6.
+  - [ ] Story 4 (worker-tier, after Story 2): Visit scheduling UI — coordinator schedules a visit against a provider + zone; roster view reflects who's going where.
+  - [ ] Story 5 (worker-tier, after Stories 2 & 3): Manual visit logging UI — coordinator logs a visit outcome (arrival time, tasks completed, observations, escalation flag) on behalf of a provider phoning in.
+  - [ ] Story 6 (worker-tier, after Stories 2 & 3): Exception queue view — clinical director sees late visits, missed check-ins, flagged observations/escalations in one place.
 - [ ] Epic: WhatsApp family communication (visit summaries, escalation alerts, template library)
 - [ ] Epic: Provider onboarding & credentialing, manual-first (credential upload/logging, 30-day expiry flagging)
 - [ ] Epic: Payments Phase 1 minimum (Paystack GHS link, Stripe USD/GBP/EUR link)
 
 ### Changelog
-_(none yet — phase not started)_
+- 2026-08-09 — Phase 1 unlocked: all Phase 0 exit criteria confirmed checked (schema+RLS live on hosted `carebridge`, CI green on all 6 workflows including `migration-dry-run` via PR #1, credential_type seeded, audit triggers verified). Epics not yet broken into stories — do that at kickoff per architecture brief Part 5.
+- 2026-08-09 — Broke the coordinator-console epic into 6 ordered stories. Deviates from the brief's 4 stories (Part 5) because scheduling/logging/exception-queue all silently assumed Domain 4 (`zone`/`visit`/etc.) and Domain 7 (`escalation`/`alert_rule`) schema that hasn't been built — split those out as their own supervisor-tier schema stories (2 and 3) ahead of the UI stories that depend on them, and folded in the parked `client.zone_id` FK backfill. No code written yet.
+- 2026-08-09 — Landed Story 2: Domain 4 schema + RLS (`zone`, `roster`, `visit`, `visit_checkin`, `observation`, `task`) in `supabase/migrations/20260809190000_domain4_scheduling_visit_ops.sql`, backfilling `client.zone_id`'s FK. Passes `rls:check` (28 tables). Updated `supabase/seed.sql` to add a seed `zone` row (clients already referenced a `zone_id` placeholder UUID that had nothing to point at before this migration).
+- 2026-08-09 — **Found and fixed a real security regression while verifying Story 2, unrelated to Domain 4 itself**: `internal.is_staff()` (moved out of `public` in `20260809180000_security_hardening.sql`) calls `current_role_slug()` with a hardcoded `public.` qualifier. `ALTER FUNCTION ... SET SCHEMA` relocates a function's own catalog entry but does not rewrite literal schema-qualified calls to *other* functions inside a `language sql` body — so every call to `is_staff()` has been raising `function public.current_role_slug() does not exist` since that migration landed, hard-erroring (not silently denying) every staff-gated RLS policy in the entire schema for any real authenticated session. The `180000` migration's own verification checked grants and `get_advisors` output, not an actual role-impersonated query, so this shipped unnoticed — including to the hosted `carebridge` project (pushed in `c72cf2d`). Fixed in `supabase/migrations/20260809200000_fix_is_staff_internal_reference.sql` (repoints the call at `internal.current_role_slug()`); confirmed no other relocated function has the same cross-reference pattern. Verified against real local Postgres via `supabase db reset` + 6 role-impersonation cases covering staff/own-provider/other-provider/consented-sponsor/unconsented-sponsor/bystander-sponsor across all 6 new tables, plus a direct bystander `INSERT` correctly rejected. Pushed both `20260809190000` and `20260809200000` to the hosted `carebridge` project via the Supabase MCP `apply_migration` tool (no local `SUPABASE_ACCESS_TOKEN` cached in this session for the CLI path — see below, this has a real follow-up cost). Confirmed on the hosted project itself: all 6 new tables present, `internal.is_staff()` now resolves without error, and `get_advisors` (security) returns zero lints.
+- 2026-08-09 — **Second issue found from the MCP push path**: `apply_migration` stamps its own version number (`supabase_migrations.schema_migrations.version`) from wall-clock time instead of taking it from the migration name/filename — it recorded `20260810000029`/`20260810000039` instead of `20260809190000`/`20260809200000`. Left uncorrected, a future `supabase db push` from a fresh checkout would see the local files' actual timestamps as unrecorded and try to reapply already-created tables/functions, failing on "already exists." Fixed by directly `UPDATE`ing the two rows in `supabase_migrations.schema_migrations` to the correct versions (confirmed via `list_migrations`). That UPDATE itself got logged as a ninth, phantom migration entry (`fix_migration_history_version_drift`, version `20260810000123`) with no corresponding local file — harmless (Supabase's internal tracking table only, not user schema) but a known cosmetic mismatch if anyone diffs local files against hosted history. **Takeaway for future sessions: prefer `supabase db push` (CLI, needs `SUPABASE_ACCESS_TOKEN` + DB password) over the MCP `apply_migration` tool when pushing versioned migration files** — the CLI path doesn't have this drift problem. MCP `apply_migration`/`execute_sql` remain fine for one-off inspection or hand-authored fixup queries that aren't meant to mirror a local file 1:1.
 
 ---
 
