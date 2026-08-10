@@ -236,6 +236,7 @@ export type Database = {
           date_of_birth: string
           full_name: string
           id: string
+          referral_source: string | null
           updated_at: string
           zone_id: string
         }
@@ -246,6 +247,7 @@ export type Database = {
           date_of_birth: string
           full_name: string
           id?: string
+          referral_source?: string | null
           updated_at?: string
           zone_id: string
         }
@@ -256,6 +258,7 @@ export type Database = {
           date_of_birth?: string
           full_name?: string
           id?: string
+          referral_source?: string | null
           updated_at?: string
           zone_id?: string
         }
@@ -1236,6 +1239,9 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          departed_at: string | null
+          departure_reason: string | null
+          employment_status: string
           id: string
           photo_url: string | null
           updated_at: string
@@ -1245,6 +1251,9 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string
+          departed_at?: string | null
+          departure_reason?: string | null
+          employment_status?: string
           id?: string
           photo_url?: string | null
           updated_at?: string
@@ -1254,6 +1263,9 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          departed_at?: string | null
+          departure_reason?: string | null
+          employment_status?: string
           id?: string
           photo_url?: string | null
           updated_at?: string

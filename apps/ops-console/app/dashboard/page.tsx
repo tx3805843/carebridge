@@ -11,14 +11,15 @@ import { createClient } from "@/lib/supabase/server";
  * No date-range picker either — pilot scale doesn't need period-over-period trending yet;
  * every metric here is all-time.
  *
- * Two of the six named metrics have no underlying data model at all right now: staff
- * retention needs an employment-status/departure field on `provider` (doesn't exist —
- * provider rows are never "closed out", so there's no churn signal to compute from), and
- * referral rate needs a referral-source field on client onboarding (doesn't exist either,
- * and isn't the Domain 6 `referral` table, which is Phase 3 care-coordination referrals to
- * external providers, an unrelated concept despite the name collision). Shown as an explicit
- * "not yet trackable" note rather than a fabricated number — see the two new open items
- * logged in the roadmap alongside this story.
+ * Staff retention and referral rate (`supabase/migrations/20260810040000_provider_employment_client_referral.sql`
+ * added the two fields these need): retention here is a point-in-time headcount ratio
+ * (currently-active ÷ ever-onboarded), not a period-over-period churn rate — consistent with
+ * every other metric on this page being all-time rather than date-ranged. Referral rate is
+ * the fraction of clients whose recorded referral_source is specifically
+ * 'existing_family_referral' (the metric this exit criterion actually means — organic growth
+ * from families already using CareBridge), out of clients with any referral_source recorded
+ * at all (referral_source is optional at onboarding, so unrecorded clients are excluded from
+ * the denominator rather than counted as "not a referral").
  */
 export default async function DashboardPage() {
   await requireStaffUser();
@@ -26,17 +27,25 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
 
-  const [{ count: totalDueVisits }, { count: completedVisits }, { count: incidentCount }, { data: activeSubscriptions }] =
-    await Promise.all([
-      supabase.from("visit").select("id", { count: "exact", head: true }).lt("scheduled_end", nowIso),
-      supabase
-        .from("visit")
-        .select("id", { count: "exact", head: true })
-        .lt("scheduled_end", nowIso)
-        .eq("status", "completed"),
-      supabase.from("incident_report").select("id", { count: "exact", head: true }),
-      supabase.from("subscription").select("currency, amount").eq("status", "active"),
-    ]);
+  const [
+    { count: totalDueVisits },
+    { count: completedVisits },
+    { count: incidentCount },
+    { data: activeSubscriptions },
+    { data: providerStatuses },
+    { data: clientReferralSources },
+  ] = await Promise.all([
+    supabase.from("visit").select("id", { count: "exact", head: true }).lt("scheduled_end", nowIso),
+    supabase
+      .from("visit")
+      .select("id", { count: "exact", head: true })
+      .lt("scheduled_end", nowIso)
+      .eq("status", "completed"),
+    supabase.from("incident_report").select("id", { count: "exact", head: true }),
+    supabase.from("subscription").select("currency, amount").eq("status", "active"),
+    supabase.from("provider").select("employment_status"),
+    supabase.from("client").select("referral_source"),
+  ]);
 
   const due = totalDueVisits ?? 0;
   const completed = completedVisits ?? 0;
@@ -48,6 +57,14 @@ export default async function DashboardPage() {
   for (const subscription of activeSubscriptions ?? []) {
     mrrByCurrency.set(subscription.currency, (mrrByCurrency.get(subscription.currency) ?? 0) + subscription.amount);
   }
+
+  const totalProviders = providerStatuses?.length ?? 0;
+  const activeProviders = (providerStatuses ?? []).filter((p) => p.employment_status === "active").length;
+  const retentionRate = totalProviders > 0 ? (activeProviders / totalProviders) * 100 : null;
+
+  const recordedReferrals = (clientReferralSources ?? []).filter((c) => c.referral_source !== null);
+  const familyReferrals = recordedReferrals.filter((c) => c.referral_source === "existing_family_referral").length;
+  const referralRate = recordedReferrals.length > 0 ? (familyReferrals / recordedReferrals.length) * 100 : null;
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-8 p-24">
@@ -90,16 +107,18 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">Shown per currency — no FX conversion applied</p>
         </div>
 
-        <div className="rounded-md border border-border p-4 opacity-60">
+        <div className="rounded-md border border-border p-4">
           <p className="text-sm text-muted-foreground">Staff retention</p>
-          <p className="text-lg font-medium">Not yet trackable</p>
-          <p className="text-xs text-muted-foreground">No employment-status field on provider yet</p>
+          <p className="text-2xl font-semibold">{retentionRate === null ? "—" : `${retentionRate.toFixed(1)}%`}</p>
+          <p className="text-xs text-muted-foreground">{activeProviders} of {totalProviders} providers active</p>
         </div>
 
-        <div className="rounded-md border border-border p-4 opacity-60">
+        <div className="rounded-md border border-border p-4">
           <p className="text-sm text-muted-foreground">Referral rate</p>
-          <p className="text-lg font-medium">Not yet trackable</p>
-          <p className="text-xs text-muted-foreground">No referral-source field on client onboarding yet</p>
+          <p className="text-2xl font-semibold">{referralRate === null ? "—" : `${referralRate.toFixed(1)}%`}</p>
+          <p className="text-xs text-muted-foreground">
+            {familyReferrals} of {recordedReferrals.length} clients with a recorded source
+          </p>
         </div>
       </div>
     </main>

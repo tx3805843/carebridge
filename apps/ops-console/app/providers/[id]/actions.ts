@@ -137,6 +137,34 @@ export async function addTrainingRecord(providerId: string, formData: FormData) 
   redirect(`/providers/${providerId}?added=training`);
 }
 
+const EMPLOYMENT_STATUSES = ["active", "on_leave", "departed"];
+
+export async function updateEmploymentStatus(providerId: string, formData: FormData) {
+  const employmentStatus = String(formData.get("employmentStatus") ?? "");
+  const departureReason = String(formData.get("departureReason") ?? "").trim();
+
+  if (!EMPLOYMENT_STATUSES.includes(employmentStatus)) {
+    redirect(`/providers/${providerId}?error=${encodeURIComponent("Invalid employment status.")}`);
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("provider")
+    .update({
+      employment_status: employmentStatus,
+      departed_at: employmentStatus === "departed" ? new Date().toISOString() : null,
+      departure_reason: employmentStatus === "departed" ? departureReason || null : null,
+    })
+    .eq("id", providerId);
+
+  if (error) {
+    redirect(`/providers/${providerId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/providers/${providerId}?updated=employment status`);
+}
+
 export async function updateVerifiedProfile(providerId: string, formData: FormData) {
   const supabase = await createClient();
 

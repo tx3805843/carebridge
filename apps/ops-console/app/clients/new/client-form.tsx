@@ -33,6 +33,18 @@ export function NewClientForm({ zones, error }: { zones: Zone[]; error?: string 
             </option>
           ))}
         </select>
+        <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+          How did they hear about CareBridge? (optional)
+          <select name="referralSource" defaultValue="" className="rounded-md border border-border px-3 py-2">
+            <option value="">Not recorded</option>
+            <option value="existing_family_referral">Referred by an existing family</option>
+            <option value="staff_referral">Referred by staff</option>
+            <option value="social_media">Social media</option>
+            <option value="community_event">Community event</option>
+            <option value="search_online">Online search</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">

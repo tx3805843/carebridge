@@ -19,7 +19,7 @@ export default async function ProvidersPage() {
   const [{ data: providers }, { data: roles }] = await Promise.all([
     supabase
       .from("provider")
-      .select("id, user_id, years_experience")
+      .select("id, user_id, years_experience, employment_status")
       .order("created_at", { ascending: false }),
     supabase.from("role").select("id, slug"),
   ]);
@@ -58,6 +58,7 @@ export default async function ProvidersPage() {
             <th className="py-2">Name</th>
             <th className="py-2">Role</th>
             <th className="py-2">Experience</th>
+            <th className="py-2">Status</th>
             <th className="py-2">Verification</th>
           </tr>
         </thead>
@@ -76,6 +77,7 @@ export default async function ProvidersPage() {
                 </td>
                 <td className="py-2 capitalize">{roleSlug ?? "—"}</td>
                 <td className="py-2">{provider.years_experience} yrs</td>
+                <td className="py-2 capitalize">{provider.employment_status.replace("_", " ")}</td>
                 <td className="py-2">
                   <div className="flex flex-wrap gap-2">
                     {flagBadge("ID", profile?.id_verified ?? false)}

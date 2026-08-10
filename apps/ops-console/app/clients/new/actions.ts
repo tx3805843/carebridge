@@ -11,6 +11,7 @@ export async function onboardClient(formData: FormData) {
   const zoneId = String(formData.get("zoneId") ?? "");
   const careSummary = String(formData.get("careSummary") ?? "").trim();
   const reviewDueAt = String(formData.get("reviewDueAt") ?? "");
+  const referralSource = String(formData.get("referralSource") ?? "");
 
   if (!fullName || !dateOfBirth || !address || !zoneId || !careSummary) {
     redirect(
@@ -49,7 +50,13 @@ export async function onboardClient(formData: FormData) {
 
   const { data: client, error: clientError } = await supabase
     .from("client")
-    .insert({ full_name: fullName, date_of_birth: dateOfBirth, address, zone_id: zoneId })
+    .insert({
+      full_name: fullName,
+      date_of_birth: dateOfBirth,
+      address,
+      zone_id: zoneId,
+      referral_source: referralSource || null,
+    })
     .select("id")
     .single();
 

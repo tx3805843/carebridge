@@ -8,8 +8,11 @@ import {
   addIdentityVerification,
   addTrainingRecord,
   logCredentialVerification,
+  updateEmploymentStatus,
   updateVerifiedProfile,
 } from "./actions";
+
+const EMPLOYMENT_STATUSES = ["active", "on_leave", "departed"];
 
 const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "expired", "rejected"];
 
@@ -28,7 +31,7 @@ export default async function ProviderDetailPage({
 
   const { data: provider } = await supabase
     .from("provider")
-    .select("id, user_id, years_experience, photo_url")
+    .select("id, user_id, years_experience, photo_url, employment_status, departed_at, departure_reason")
     .eq("id", id)
     .maybeSingle();
 
@@ -72,6 +75,7 @@ export default async function ProviderDetailPage({
 
   const credentialTypeLabelById = new Map((credentialTypes ?? []).map((type) => [type.id, type.label]));
 
+  const boundUpdateEmploymentStatus = updateEmploymentStatus.bind(null, provider.id);
   const boundAddCredential = addCredential.bind(null, provider.id);
   const boundLogVerification = logCredentialVerification.bind(null, provider.id);
   const boundAddIdentity = addIdentityVerification.bind(null, provider.id);
@@ -90,6 +94,42 @@ export default async function ProviderDetailPage({
       {added ? <p className="text-sm text-emerald-700">Added {added}.</p> : null}
       {updated ? <p className="text-sm text-emerald-700">Updated {updated}.</p> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+      <section className="flex w-full max-w-2xl flex-col gap-3">
+        <h2 className="text-lg font-medium">Employment status</h2>
+        <form action={boundUpdateEmploymentStatus} className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4">
+          <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+            Status
+            <select
+              name="employmentStatus"
+              defaultValue={provider.employment_status}
+              className="rounded-md border border-border px-3 py-2"
+            >
+              {EMPLOYMENT_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+            Departure reason (if departed)
+            <input
+              name="departureReason"
+              defaultValue={provider.departure_reason ?? ""}
+              className="rounded-md border border-border px-3 py-2"
+            />
+          </label>
+          <Button type="submit" size="sm">
+            Save
+          </Button>
+          {provider.departed_at ? (
+            <p className="w-full text-xs text-muted-foreground">
+              Departed {new Date(provider.departed_at).toLocaleDateString()}
+            </p>
+          ) : null}
+        </form>
+      </section>
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <h2 className="text-lg font-medium">Verified profile</h2>
