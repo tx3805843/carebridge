@@ -1829,7 +1829,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      onboard_client_with_care_team: {
+        Args: {
+          p_address: string
+          p_care_summary: string
+          p_contacts: Json
+          p_date_of_birth: string
+          p_full_name: string
+          p_referral_source?: string
+          p_review_due_at?: string
+          p_sponsors: Json
+          p_zone_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

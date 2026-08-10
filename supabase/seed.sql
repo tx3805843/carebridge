@@ -255,3 +255,69 @@ on conflict (id) do nothing;
 insert into dpc_registration (id, registration_number, status, renewal_due_at, created_by) values
   ('e9000000-0000-0000-0000-000000000001', 'DPC-PENDING', 'pending', null, 'a0000000-0000-0000-0000-000000000000')
 on conflict (id) do nothing;
+
+-- ── Phase 1 exercise data: employment/referral, roster, visits, escalations, billing ───
+-- Everything above (Domain 1-3, 9) covers Phase 0. This block gives a Phase 1 pilot session
+-- something to actually click through: a roster assignment, a completed visit with checkin/
+-- task/observation, an overdue (not-yet-logged) visit and a future one, two open escalations
+-- (one visit-linked, one not), and a subscription/invoice/payment per client so /billing and
+-- /dashboard aren't empty. `f`-prefixed UUIDs continue the file's fixed-UUID scheme.
+
+-- provider.employment_status / client.referral_source: UPDATE, not part of the original
+-- INSERTs above, so re-running this file after those rows already exist still sets these
+-- (an ON CONFLICT DO NOTHING insert would silently skip them on a second run).
+update provider set employment_status = 'departed', departed_at = now() - interval '2 weeks',
+  departure_reason = 'Relocated to Kumasi' where id = 'c0000000-0000-0000-0000-000000000002';
+
+update client set referral_source = 'existing_family_referral' where id in
+  ('b0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003');
+update client set referral_source = 'social_media' where id = 'b0000000-0000-0000-0000-000000000005';
+
+insert into roster (id, provider_id, zone_id, week_starting, created_by) values
+  ('f1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', date_trunc('week', current_date)::date, 'a0000000-0000-0000-0000-000000000001')
+on conflict (id) do nothing;
+
+insert into visit (id, client_id, provider_id, care_plan_id, scheduled_start, scheduled_end, status, created_by) values
+  ('f2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001', now() - interval '3 days', now() - interval '3 days' + interval '1 hour', 'completed', 'a0000000-0000-0000-0000-000000000001'),
+  ('f2000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000002', now() - interval '1 day', now() - interval '1 day' + interval '1 hour', 'scheduled', 'a0000000-0000-0000-0000-000000000001'),
+  ('f2000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000003', 'e1000000-0000-0000-0000-000000000003', now() + interval '2 days', now() + interval '2 days' + interval '1 hour', 'scheduled', 'a0000000-0000-0000-0000-000000000002'),
+  ('f2000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000004', 'e1000000-0000-0000-0000-000000000004', now() - interval '5 days', now() - interval '5 days' + interval '1 hour', 'completed', 'a0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;
+
+insert into visit_checkin (id, visit_id, event, occurred_at, zone_id, created_by) values
+  ('f3000000-0000-0000-0000-000000000001', 'f2000000-0000-0000-0000-000000000001', 'arrived', now() - interval '3 days' + interval '5 minutes', 'd0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001'),
+  ('f3000000-0000-0000-0000-000000000002', 'f2000000-0000-0000-0000-000000000004', 'arrived', now() - interval '5 days' + interval '5 minutes', 'd0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;
+
+insert into task (id, visit_id, description, completed, created_by) values
+  ('f4000000-0000-0000-0000-000000000001', 'f2000000-0000-0000-0000-000000000001', 'Blood pressure check', true, 'a0000000-0000-0000-0000-000000000001'),
+  ('f4000000-0000-0000-0000-000000000002', 'f2000000-0000-0000-0000-000000000004', 'Insulin administration supervision', true, 'a0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;
+
+insert into observation (id, visit_id, type, value, recorded_at, created_by) values
+  ('f5000000-0000-0000-0000-000000000001', 'f2000000-0000-0000-0000-000000000001', 'blood_pressure', '128/82, stable', now() - interval '3 days' + interval '20 minutes', 'a0000000-0000-0000-0000-000000000001'),
+  ('f5000000-0000-0000-0000-000000000002', 'f2000000-0000-0000-0000-000000000004', 'glucose', '6.2 mmol/L fasting, stable', now() - interval '5 days' + interval '20 minutes', 'a0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;
+
+insert into escalation (id, client_id, visit_id, severity, reason, status, created_by) values
+  ('f6000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'f2000000-0000-0000-0000-000000000002', 'medium', 'Visit is overdue and not yet logged — family notified, follow-up required.', 'open', 'a0000000-0000-0000-0000-000000000001'),
+  ('f6000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', null, 'critical', 'Family reported unexplained bruising — flagged for clinical director review, not averaged into any rating per CLAUDE.md safeguarding routing.', 'open', 'a0000000-0000-0000-0000-000000000003')
+on conflict (id) do nothing;
+
+insert into subscription (id, client_id, plan_code, currency, amount, billing_interval, status, created_by) values
+  ('f7000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'standard_daily', 'GHS', 1200.00, 'monthly', 'active', 'a0000000-0000-0000-0000-000000000001'),
+  ('f7000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'standard_daily', 'GHS', 900.00, 'monthly', 'active', 'a0000000-0000-0000-0000-000000000001'),
+  ('f7000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', 'diaspora_premium', 'USD', 450.00, 'monthly', 'active', 'a0000000-0000-0000-0000-000000000002'),
+  ('f7000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000004', 'standard_daily', 'GHS', 1100.00, 'monthly', 'active', 'a0000000-0000-0000-0000-000000000002'),
+  ('f7000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000005', 'diaspora_premium', 'GBP', 380.00, 'monthly', 'active', 'a0000000-0000-0000-0000-000000000001')
+on conflict (id) do nothing;
+
+insert into invoice (id, client_id, subscription_id, amount, currency, status, due_at, paid_at, created_by) values
+  ('f8000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000001', 1200.00, 'GHS', 'paid', current_date - 5, now() - interval '3 days', 'a0000000-0000-0000-0000-000000000001'),
+  ('f8000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'f7000000-0000-0000-0000-000000000003', 450.00, 'USD', 'sent', current_date + 5, null, 'a0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;
+
+insert into payment (id, invoice_id, processor, processor_reference, payment_link_url, amount, currency, status, paid_at, created_by) values
+  ('f9000000-0000-0000-0000-000000000001', 'f8000000-0000-0000-0000-000000000001', 'paystack', 'seed-ref-f8000001', null, 1200.00, 'GHS', 'succeeded', now() - interval '3 days', 'a0000000-0000-0000-0000-000000000001'),
+  ('f9000000-0000-0000-0000-000000000002', 'f8000000-0000-0000-0000-000000000002', 'stripe', 'seed-ref-f8000002', 'https://checkout.stripe.com/pay/seed-demo-not-real', 450.00, 'USD', 'pending', null, 'a0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;

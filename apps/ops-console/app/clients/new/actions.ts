@@ -48,53 +48,17 @@ export async function onboardClient(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { data: client, error: clientError } = await supabase
-    .from("client")
-    .insert({
-      full_name: fullName,
-      date_of_birth: dateOfBirth,
-      address,
-      zone_id: zoneId,
-      referral_source: referralSource || null,
-    })
-    .select("id")
-    .single();
-
-  if (clientError || !client) {
-    redirect(
-      `/clients/new?error=${encodeURIComponent(clientError?.message ?? "Failed to create client.")}`,
-    );
-  }
-
-  const { error: carePlanError } = await supabase.from("care_plan").insert({
-    client_id: client.id,
-    summary: careSummary,
-    review_due_at: reviewDueAt || null,
-  });
-
-  if (carePlanError) {
-    redirect(
-      `/clients/new?error=${encodeURIComponent(`Client was created (id ${client.id}) but the care plan failed to save: ${carePlanError.message}. Add the care plan manually.`)}`,
-    );
-  }
-
-  const { error: contactsError } = await supabase.from("emergency_contact").insert(
-    contacts.map((contact, index) => ({
-      client_id: client.id,
-      full_name: contact.fullName,
-      phone: contact.phone,
-      priority: index + 1,
-    })),
-  );
-
-  if (contactsError) {
-    redirect(
-      `/clients/new?error=${encodeURIComponent(`Client and care plan were created (id ${client.id}) but emergency contacts failed to save: ${contactsError.message}. Add them manually.`)}`,
-    );
-  }
-
+  // Resolve every sponsor's user_id (existing account, or a new one) *before* writing anything
+  // to the client's own tables. GoTrue account creation is an Auth API call, not SQL, so it
+  // can't be part of the transaction below — doing it first means a failure here leaves zero
+  // rows written, instead of orphaning an already-created client (the bug this fixes).
   const adminClient = createAdminClient();
-  let decisionMakerPriority = 1;
+  const resolvedSponsors: {
+    userId: string;
+    relationship: string;
+    isDecisionMaker: boolean;
+    isBillingResponsible: boolean;
+  }[] = [];
 
   for (const sponsor of sponsors) {
     const { data: existingUser } = await supabase
@@ -114,54 +78,50 @@ export async function onboardClient(formData: FormData) {
 
       if (createUserError || !created.user) {
         redirect(
-          `/clients/new?error=${encodeURIComponent(`Client, care plan, and emergency contacts were created (id ${client.id}), but the sponsor account for ${sponsor.email} failed: ${createUserError?.message ?? "unknown error"}. Link this sponsor manually.`)}`,
+          `/clients/new?error=${encodeURIComponent(`Sponsor account for ${sponsor.email} failed: ${createUserError?.message ?? "unknown error"}. No client was created — fix and resubmit.`)}`,
         );
       }
 
       userId = created.user.id;
     }
 
-    const { data: familySponsor, error: familySponsorError } = await supabase
-      .from("family_sponsor")
-      .insert({ user_id: userId, client_id: client.id, relationship: sponsor.relationship })
-      .select("id")
-      .single();
-
-    if (familySponsorError || !familySponsor) {
-      redirect(
-        `/clients/new?error=${encodeURIComponent(`Client (id ${client.id}) was created but linking sponsor ${sponsor.email} failed: ${familySponsorError?.message ?? "unknown error"}. Link this sponsor manually.`)}`,
-      );
-    }
-
-    const { error: relationshipError } = await supabase.from("client_relationship").insert({
-      client_id: client.id,
-      sponsor_id: familySponsor.id,
-      is_decision_maker: sponsor.isDecisionMaker,
-      is_billing_responsible: sponsor.isBillingResponsible,
+    resolvedSponsors.push({
+      userId,
+      relationship: sponsor.relationship,
+      isDecisionMaker: sponsor.isDecisionMaker,
+      isBillingResponsible: sponsor.isBillingResponsible,
     });
-
-    if (relationshipError) {
-      redirect(
-        `/clients/new?error=${encodeURIComponent(`Client (id ${client.id}) and sponsor ${sponsor.email} were created but the relationship record failed to save: ${relationshipError.message}. Add it manually.`)}`,
-      );
-    }
-
-    if (sponsor.isDecisionMaker) {
-      const { error: hierarchyError } = await supabase.from("decision_maker_hierarchy").insert({
-        client_id: client.id,
-        sponsor_id: familySponsor.id,
-        priority: decisionMakerPriority,
-      });
-
-      if (hierarchyError) {
-        redirect(
-          `/clients/new?error=${encodeURIComponent(`Client (id ${client.id}) and sponsor ${sponsor.email} were created but the decision-maker ordering failed to save: ${hierarchyError.message}. Add it manually.`)}`,
-        );
-      }
-
-      decisionMakerPriority += 1;
-    }
   }
 
-  redirect(`/?onboarded=${client.id}`);
+  // Everything below writes in one Postgres transaction (see
+  // 20260810050000_transactional_client_onboarding.sql) — either the whole client + care plan +
+  // contacts + sponsor links land, or none of it does. `security invoker`: still gated by each
+  // table's own staff-only RLS policy, same as the separate inserts this replaced.
+  const { data: clientId, error: onboardError } = await supabase.rpc(
+    "onboard_client_with_care_team",
+    {
+      p_full_name: fullName,
+      p_date_of_birth: dateOfBirth,
+      p_address: address,
+      p_zone_id: zoneId,
+      p_care_summary: careSummary,
+      p_referral_source: referralSource || undefined,
+      p_review_due_at: reviewDueAt || undefined,
+      p_contacts: contacts.map((contact) => ({ full_name: contact.fullName, phone: contact.phone })),
+      p_sponsors: resolvedSponsors.map((sponsor) => ({
+        user_id: sponsor.userId,
+        relationship: sponsor.relationship,
+        is_decision_maker: sponsor.isDecisionMaker,
+        is_billing_responsible: sponsor.isBillingResponsible,
+      })),
+    },
+  );
+
+  if (onboardError || !clientId) {
+    redirect(
+      `/clients/new?error=${encodeURIComponent(`Onboarding failed, nothing was saved: ${onboardError?.message ?? "unknown error"}. Sponsor account(s) may already exist — resubmitting is safe.`)}`,
+    );
+  }
+
+  redirect(`/?onboarded=${clientId}`);
 }
