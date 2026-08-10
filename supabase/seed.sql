@@ -72,25 +72,42 @@ on conflict (user_id, client_id) do nothing;
 -- an untyped string constant across a UNION ALL to `text`, and text -> uuid is not an
 -- implicit/assignment cast for an INSERT ... SELECT (unlike a plain INSERT ... VALUES, where
 -- the target column type drives the cast directly).
-insert into client_relationship (client_id, sponsor_id, is_decision_maker, is_billing_responsible, created_by)
-select 'b0000000-0000-0000-0000-000000000001'::uuid, fs.id, true, true, 'a0000000-0000-0000-0000-000000000001'::uuid
+insert into authority_grant (client_id, sponsor_id, authority_type, status, granted_at, granted_by, created_by)
+select 'b0000000-0000-0000-0000-000000000001'::uuid, fs.id, 'decision_maker', 'active', now(), 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid
 from family_sponsor fs where fs.user_id = 'a000000a-0000-0000-0000-00000000000a' and fs.client_id = 'b0000000-0000-0000-0000-000000000001'
 union all
-select 'b0000000-0000-0000-0000-000000000002'::uuid, fs.id, true, true, 'a0000000-0000-0000-0000-000000000001'::uuid
+select 'b0000000-0000-0000-0000-000000000002'::uuid, fs.id, 'decision_maker', 'active', now(), 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid
 from family_sponsor fs where fs.user_id = 'a000000b-0000-0000-0000-00000000000b' and fs.client_id = 'b0000000-0000-0000-0000-000000000002'
 union all
-select 'b0000000-0000-0000-0000-000000000003'::uuid, fs.id, true, true, 'a0000000-0000-0000-0000-000000000002'::uuid
+select 'b0000000-0000-0000-0000-000000000003'::uuid, fs.id, 'decision_maker', 'active', now(), 'a0000000-0000-0000-0000-000000000002'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid
 from family_sponsor fs where fs.user_id = 'a000000c-0000-0000-0000-00000000000c' and fs.client_id = 'b0000000-0000-0000-0000-000000000003'
 union all
-select 'b0000000-0000-0000-0000-000000000003'::uuid, fs.id, true, false, 'a0000000-0000-0000-0000-000000000002'::uuid
+select 'b0000000-0000-0000-0000-000000000003'::uuid, fs.id, 'decision_maker', 'active', now(), 'a0000000-0000-0000-0000-000000000002'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid
 from family_sponsor fs where fs.user_id = 'a000000d-0000-0000-0000-00000000000d' and fs.client_id = 'b0000000-0000-0000-0000-000000000003'
 union all
-select 'b0000000-0000-0000-0000-000000000004'::uuid, fs.id, true, true, 'a0000000-0000-0000-0000-000000000002'::uuid
+select 'b0000000-0000-0000-0000-000000000004'::uuid, fs.id, 'decision_maker', 'active', now(), 'a0000000-0000-0000-0000-000000000002'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid
 from family_sponsor fs where fs.user_id = 'a000000e-0000-0000-0000-00000000000e' and fs.client_id = 'b0000000-0000-0000-0000-000000000004'
 union all
-select 'b0000000-0000-0000-0000-000000000005'::uuid, fs.id, true, true, 'a0000000-0000-0000-0000-000000000001'::uuid
+select 'b0000000-0000-0000-0000-000000000005'::uuid, fs.id, 'decision_maker', 'active', now(), 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid
 from family_sponsor fs where fs.user_id = 'a000000f-0000-0000-0000-00000000000f' and fs.client_id = 'b0000000-0000-0000-0000-000000000005'
-on conflict (client_id, sponsor_id) do nothing;
+on conflict (client_id, sponsor_id, authority_type) where status = 'active' do nothing;
+
+insert into authority_grant (client_id, sponsor_id, authority_type, status, granted_at, granted_by, created_by)
+select 'b0000000-0000-0000-0000-000000000001'::uuid, fs.id, 'billing_responsible', 'active', now(), 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid
+from family_sponsor fs where fs.user_id = 'a000000a-0000-0000-0000-00000000000a' and fs.client_id = 'b0000000-0000-0000-0000-000000000001'
+union all
+select 'b0000000-0000-0000-0000-000000000002'::uuid, fs.id, 'billing_responsible', 'active', now(), 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid
+from family_sponsor fs where fs.user_id = 'a000000b-0000-0000-0000-00000000000b' and fs.client_id = 'b0000000-0000-0000-0000-000000000002'
+union all
+select 'b0000000-0000-0000-0000-000000000003'::uuid, fs.id, 'billing_responsible', 'active', now(), 'a0000000-0000-0000-0000-000000000002'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid
+from family_sponsor fs where fs.user_id = 'a000000c-0000-0000-0000-00000000000c' and fs.client_id = 'b0000000-0000-0000-0000-000000000003'
+union all
+select 'b0000000-0000-0000-0000-000000000004'::uuid, fs.id, 'billing_responsible', 'active', now(), 'a0000000-0000-0000-0000-000000000002'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid
+from family_sponsor fs where fs.user_id = 'a000000e-0000-0000-0000-00000000000e' and fs.client_id = 'b0000000-0000-0000-0000-000000000004'
+union all
+select 'b0000000-0000-0000-0000-000000000005'::uuid, fs.id, 'billing_responsible', 'active', now(), 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid
+from family_sponsor fs where fs.user_id = 'a000000f-0000-0000-0000-00000000000f' and fs.client_id = 'b0000000-0000-0000-0000-000000000005'
+on conflict (client_id, sponsor_id, authority_type) where status = 'active' do nothing;
 
 insert into decision_maker_hierarchy (client_id, sponsor_id, priority, created_by)
 select 'b0000000-0000-0000-0000-000000000001'::uuid, fs.id, 1, 'a0000000-0000-0000-0000-000000000001'::uuid
