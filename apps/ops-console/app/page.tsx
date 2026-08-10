@@ -22,6 +22,9 @@ export default async function Home({
       ) : null}
       {visitScheduled ? <p className="text-sm text-emerald-700">Visit scheduled.</p> : null}
       <div className="flex gap-3">
+        <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>
+          Dashboard
+        </Link>
         <Link href="/clients/new" className={buttonVariants()}>
           Onboard a new client
         </Link>
