@@ -156,3 +156,29 @@ export async function recordConsent(clientId: string, formData: FormData) {
 
   redirect(`/clients/${clientId}?updated=consent-record`);
 }
+
+export async function deactivateClient(clientId: string, _formData: FormData) {
+  await requireStaffUser();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("client").update({ status: "inactive" }).eq("id", clientId);
+
+  if (error) {
+    redirect(`/clients/${clientId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/clients/${clientId}?updated=status`);
+}
+
+export async function reactivateClient(clientId: string, _formData: FormData) {
+  await requireStaffUser();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("client").update({ status: "active" }).eq("id", clientId);
+
+  if (error) {
+    redirect(`/clients/${clientId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/clients/${clientId}?updated=status`);
+}

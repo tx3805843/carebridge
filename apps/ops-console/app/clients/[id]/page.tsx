@@ -4,7 +4,15 @@ import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
-import { grantAuthority, revokeAuthority, grantConsent, revokeConsent, recordConsent } from "./actions";
+import {
+  grantAuthority,
+  revokeAuthority,
+  grantConsent,
+  revokeConsent,
+  recordConsent,
+  deactivateClient,
+  reactivateClient,
+} from "./actions";
 import { AUTHORITY_TYPES, CONSENT_SCOPES } from "./constants";
 
 interface ConsentRecordRow {
@@ -28,7 +36,7 @@ export default async function ClientDetailPage({
 
   const { data: client } = await supabase
     .from("client")
-    .select("id, full_name, date_of_birth, zone_id")
+    .select("id, full_name, date_of_birth, zone_id, status")
     .eq("id", id)
     .maybeSingle();
 
@@ -72,7 +80,43 @@ export default async function ClientDetailPage({
       <EntitySummaryCard
         title={client.full_name}
         subtitle={zone?.name ?? "No zone"}
-        meta={[{ label: "DOB", value: formatDate(client.date_of_birth) }]}
+        meta={[
+          { label: "DOB", value: formatDate(client.date_of_birth) },
+          {
+            label: "Status",
+            value: (
+              <StatusBadge
+                variant={client.status === "active" ? "success" : "neutral"}
+                label={client.status === "active" ? "Active" : "Inactive"}
+              />
+            ),
+          },
+        ]}
+        actions={
+          <form action={(client.status === "active" ? deactivateClient : reactivateClient).bind(null, client.id)}>
+            <ConfirmSubmitButton
+              size="sm"
+              variant={client.status === "active" ? "destructive" : "outline"}
+              confirmTitle={client.status === "active" ? "Deactivate client" : "Reactivate client"}
+              confirmDescription={
+                client.status === "active" ? (
+                  <>
+                    Deactivating <strong>{client.full_name}</strong> stops new visits from being scheduled for
+                    them. This can be undone by reactivating.
+                  </>
+                ) : (
+                  <>
+                    Reactivating <strong>{client.full_name}</strong> re-checks that they still have an emergency
+                    contact, a care plan, and an active authority grant. If any is missing, this will be rejected.
+                  </>
+                )
+              }
+              confirmLabel={client.status === "active" ? "Deactivate" : "Reactivate"}
+            >
+              {client.status === "active" ? "Deactivate client" : "Reactivate client"}
+            </ConfirmSubmitButton>
+          </form>
+        }
       />
 
       {updated ? <p className="mb-4 text-sm text-success">Updated.</p> : null}
