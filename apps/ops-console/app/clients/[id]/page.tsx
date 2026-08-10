@@ -182,7 +182,18 @@ export default async function ClientDetailPage({
                                 placeholder="Evidence ref (optional)"
                                 className="rounded-md border border-border px-2 py-1 text-xs"
                               />
-                              <input type="date" name="effectiveFrom" className="rounded-md border border-border px-2 py-1 text-xs" />
+                              <input
+                                type="date"
+                                name="effectiveFrom"
+                                aria-label="Effective from"
+                                className="rounded-md border border-border px-2 py-1 text-xs"
+                              />
+                              <input
+                                type="date"
+                                name="effectiveUntil"
+                                aria-label="Effective until"
+                                className="rounded-md border border-border px-2 py-1 text-xs"
+                              />
                               <Button type="submit" size="sm" variant="outline">
                                 Grant
                               </Button>
