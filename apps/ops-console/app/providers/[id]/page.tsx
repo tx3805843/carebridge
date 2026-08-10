@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/format";
 import {
   addBackgroundCheck,
   addCredential,
@@ -125,7 +126,7 @@ export default async function ProviderDetailPage({
           </Button>
           {provider.departed_at ? (
             <p className="w-full text-xs text-muted-foreground">
-              Departed {new Date(provider.departed_at).toLocaleDateString()}
+              Departed {formatDate(provider.departed_at)}
             </p>
           ) : null}
         </form>
@@ -140,8 +141,9 @@ export default async function ProviderDetailPage({
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="nmcLicensed" defaultChecked={verifiedProfile?.nmc_licensed ?? false} />
-            NMC licensed (scheduling eligibility — recomputed nightly by the credential-expiry cron once an NMC
-            PIN/AIN credential is logged; this toggle is a manual stopgap between now and the next run)
+            NMC licensed (scheduling eligibility — recomputed automatically each night once an NMC
+            PIN/AIN credential is logged; this toggle is a manual stopgap between now and the next
+            automatic check)
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -271,7 +273,7 @@ export default async function ProviderDetailPage({
               <tr key={iv.id} className="border-t border-border">
                 <td className="py-2">{iv.vendor}</td>
                 <td className="py-2">{iv.status}</td>
-                <td className="py-2">{iv.verified_at ? new Date(iv.verified_at).toLocaleDateString() : "—"}</td>
+                <td className="py-2">{formatDate(iv.verified_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -325,7 +327,7 @@ export default async function ProviderDetailPage({
               <tr key={check.id} className="border-t border-border">
                 <td className="py-2">{check.status}</td>
                 <td className="py-2">{check.document_ref}</td>
-                <td className="py-2">{check.expires_at ? new Date(check.expires_at).toLocaleDateString() : "—"}</td>
+                <td className="py-2">{formatDate(check.expires_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -376,7 +378,7 @@ export default async function ProviderDetailPage({
               <tr key={record.id} className="border-t border-border">
                 <td className="py-2">{record.title}</td>
                 <td className="py-2">{record.cpd_points}</td>
-                <td className="py-2">{new Date(record.completed_at).toLocaleDateString()}</td>
+                <td className="py-2">{formatDate(record.completed_at)}</td>
               </tr>
             ))}
           </tbody>

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatDateTime } from "@/lib/format";
 import { LogVisitForm } from "./log-form";
 import { logVisitOutcome } from "./actions";
 
@@ -43,7 +44,7 @@ export default async function LogVisitPage({
       <h1 className="text-2xl font-semibold">Log visit outcome</h1>
       <p className="text-muted-foreground">
         {client?.full_name ?? "Unknown client"} with {providerName ?? "unknown provider"} —{" "}
-        {new Date(visit.scheduled_start).toLocaleString()}
+        {formatDateTime(visit.scheduled_start)}
       </p>
       <LogVisitForm action={boundAction} error={error} />
     </main>

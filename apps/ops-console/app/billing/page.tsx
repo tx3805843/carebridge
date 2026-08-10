@@ -2,6 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatPlanName } from "@/lib/format";
 
 export default async function BillingPage() {
   await requireStaffUser();
@@ -43,7 +44,7 @@ export default async function BillingPage() {
                   {clientNameById.get(subscription.client_id) ?? subscription.client_id}
                 </Link>
               </td>
-              <td className="py-2">{subscription.plan_code}</td>
+              <td className="py-2">{formatPlanName(subscription.plan_code)}</td>
               <td className="py-2">
                 {subscription.currency} {subscription.amount}
               </td>

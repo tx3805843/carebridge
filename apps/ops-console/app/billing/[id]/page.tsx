@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatDate, formatDateTime, formatPlanName } from "@/lib/format";
 import { generateInvoice } from "./actions";
 
 export default async function SubscriptionDetailPage({
@@ -56,8 +57,8 @@ export default async function SubscriptionDetailPage({
     <main className="flex min-h-screen flex-col items-center gap-8 p-24">
       <h1 className="text-2xl font-semibold">{client?.full_name ?? "Unknown client"}</h1>
       <p className="text-muted-foreground">
-        {subscription.plan_code} — {subscription.currency} {subscription.amount} / {subscription.billing_interval} —{" "}
-        {subscription.status}
+        {formatPlanName(subscription.plan_code)} — {subscription.currency} {subscription.amount} /{" "}
+        {subscription.billing_interval} — {subscription.status}
       </p>
 
       {created ? <p className="text-sm text-emerald-700">Subscription created.</p> : null}
@@ -84,8 +85,8 @@ export default async function SubscriptionDetailPage({
                     {invoice.currency} {invoice.amount} — {invoice.status}
                   </span>
                   <span className="text-muted-foreground">
-                    {invoice.due_at ? `due ${invoice.due_at}` : ""}
-                    {invoice.paid_at ? ` · paid ${new Date(invoice.paid_at).toLocaleString()}` : ""}
+                    {invoice.due_at ? `due ${formatDate(invoice.due_at)}` : ""}
+                    {invoice.paid_at ? ` · paid ${formatDateTime(invoice.paid_at)}` : ""}
                   </span>
                 </div>
                 {(paymentsByInvoiceId.get(invoice.id) ?? []).map((payment) => (

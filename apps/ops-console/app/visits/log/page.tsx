@@ -2,6 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatDateTime } from "@/lib/format";
 
 export default async function VisitsToLogPage({
   searchParams,
@@ -63,7 +64,7 @@ export default async function VisitsToLogPage({
             <tr key={visit.id} className="border-t border-border">
               <td className="py-2">{clientNameById.get(visit.client_id) ?? visit.client_id}</td>
               <td className="py-2">{providerNameById.get(visit.provider_id) ?? visit.provider_id}</td>
-              <td className="py-2">{new Date(visit.scheduled_start).toLocaleString()}</td>
+              <td className="py-2">{formatDateTime(visit.scheduled_start)}</td>
               <td className="py-2">{visit.status}</td>
               <td className="py-2">
                 <Link href={`/visits/${visit.id}/log`} className={buttonVariants({ size: "sm" })}>

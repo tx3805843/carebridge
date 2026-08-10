@@ -24,7 +24,7 @@ export function NewSubscriptionForm({ clients, error }: { clients: ClientOption[
           ))}
         </select>
       </label>
-      <input name="planCode" placeholder="Plan code (e.g. standard_weekly_care)" required className="rounded-md border border-border px-3 py-2" />
+      <input name="planCode" placeholder="Plan name (e.g. Standard Weekly Care)" required className="rounded-md border border-border px-3 py-2" />
       <div className="flex gap-2">
         <label className="flex flex-col gap-1 text-sm text-muted-foreground">
           Currency

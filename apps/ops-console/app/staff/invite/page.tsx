@@ -21,8 +21,13 @@ export default async function StaffInvitePage({
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 p-24">
-      <h1 className="text-2xl font-semibold">Invite a staff member</h1>
-      {invited ? <p className="text-sm text-emerald-700">Invited {invited}.</p> : null}
+      <h1 className="text-2xl font-semibold">Create a staff account</h1>
+      {invited ? (
+        <p className="text-sm text-emerald-700">
+          Account created for {invited}. No email was sent — they cannot log in until a password
+          is set for them.
+        </p>
+      ) : null}
       <StaffInviteForm roles={roles ?? []} error={error} />
     </main>
   );

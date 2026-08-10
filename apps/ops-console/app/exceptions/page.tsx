@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatDateTime } from "@/lib/format";
 import { acknowledgeEscalation, resolveEscalation } from "./actions";
 
 const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -132,7 +133,7 @@ export default async function ExceptionsPage({
                 <tr key={visit.id} className="border-t border-border">
                   <td className="py-2">{clientNameById.get(visit.client_id) ?? visit.client_id}</td>
                   <td className="py-2">{providerNameById.get(visit.provider_id) ?? visit.provider_id}</td>
-                  <td className="py-2">{new Date(visit.scheduled_end).toLocaleString()}</td>
+                  <td className="py-2">{formatDateTime(visit.scheduled_end)}</td>
                   <td className="py-2">{visit.status}</td>
                 </tr>
               ))}
@@ -158,9 +159,9 @@ export default async function ExceptionsPage({
                 </div>
                 <p className="text-sm">{escalation.reason}</p>
                 <p className="text-xs text-muted-foreground">
-                  Opened {new Date(escalation.created_at).toLocaleString()}
+                  Opened {formatDateTime(escalation.created_at)}
                   {escalation.acknowledged_at
-                    ? ` — acknowledged ${new Date(escalation.acknowledged_at).toLocaleString()}`
+                    ? ` — acknowledged ${formatDateTime(escalation.acknowledged_at)}`
                     : ""}
                 </p>
                 <div className="flex gap-2">

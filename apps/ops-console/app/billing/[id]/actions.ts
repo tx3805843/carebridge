@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createPaymentLink } from "@/lib/payments";
 import { notifyInvoiceReady } from "@/lib/whatsapp";
+import { formatPlanName } from "@/lib/format";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -71,7 +72,7 @@ export async function generateInvoice(subscriptionId: string, _formData: FormDat
         currency: subscription.currency,
         reference,
         email: billingEmail,
-        productName: `CareBridge — ${subscription.plan_code}`,
+        productName: `CareBridge — ${formatPlanName(subscription.plan_code)}`,
         successUrl: `${APP_URL}/billing/${subscriptionId}?paid=1`,
         cancelUrl: `${APP_URL}/billing/${subscriptionId}`,
       });

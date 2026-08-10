@@ -36,11 +36,12 @@ export function StaffInviteForm({ roles, error }: { roles: RoleOption[]; error?:
         ))}
       </select>
       <p className="text-sm text-muted-foreground">
-        The account is created without a usable password — the new user needs a separate invite/reset
-        email to log in for the first time (not built yet, see roadmap).
+        This creates the account only — no email is sent. The new user cannot log in until a
+        password reset/activation flow is completed (not built yet, see roadmap); until then,
+        set a password for them directly if they need access sooner.
       </p>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      <Button type="submit">Send invite</Button>
+      <Button type="submit">Create staff account</Button>
     </form>
   );
 }

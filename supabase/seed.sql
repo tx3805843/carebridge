@@ -301,7 +301,7 @@ on conflict (id) do nothing;
 
 insert into escalation (id, client_id, visit_id, severity, reason, status, created_by) values
   ('f6000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'f2000000-0000-0000-0000-000000000002', 'medium', 'Visit is overdue and not yet logged — family notified, follow-up required.', 'open', 'a0000000-0000-0000-0000-000000000001'),
-  ('f6000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', null, 'critical', 'Family reported unexplained bruising — flagged for clinical director review, not averaged into any rating per CLAUDE.md safeguarding routing.', 'open', 'a0000000-0000-0000-0000-000000000003')
+  ('f6000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', null, 'critical', 'Family reported unexplained bruising — flagged for clinical director review.', 'open', 'a0000000-0000-0000-0000-000000000003')
 on conflict (id) do nothing;
 
 insert into subscription (id, client_id, plan_code, currency, amount, billing_interval, status, created_by) values

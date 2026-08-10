@@ -47,7 +47,7 @@ export default async function Home({
           Exception queue
         </Link>
         <Link href="/staff/invite" className={buttonVariants({ variant: "outline" })}>
-          Invite staff
+          Create staff account
         </Link>
       </div>
       <form action={signOut}>
