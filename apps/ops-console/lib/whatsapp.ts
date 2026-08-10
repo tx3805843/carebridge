@@ -15,16 +15,63 @@ function getWhatsappClient(): WhatsappClient | null {
 }
 
 /**
+ * Writes a `notification` row per recipient and attempts a best-effort WhatsApp send, logging
+ * every attempt to `whatsapp_message_log`. Degrades to a logged, unsent row (no network call)
+ * rather than throwing when WhatsApp isn't configured (Meta template approval is still
+ * pending) or a recipient has no phone on file — never blocks the caller's own flow.
+ */
+async function notifyRecipients(
+  supabase: SupabaseClient<Database>,
+  recipients: { id: string; phone: string | null }[],
+  templateName: string,
+) {
+  const client = getWhatsappClient();
+
+  for (const recipient of recipients) {
+    const { data: notification } = await supabase
+      .from("notification")
+      .insert({ user_id: recipient.id, channel: "whatsapp", template_id: templateName })
+      .select("id")
+      .single();
+
+    if (!notification) {
+      continue;
+    }
+
+    if (!client || !recipient.phone) {
+      await supabase.from("whatsapp_message_log").insert({
+        to_phone: recipient.phone ?? "unknown",
+        template_name: templateName,
+        status: "failed",
+      });
+      continue;
+    }
+
+    try {
+      const { messageId } = await client.sendTemplateMessage({ to: recipient.phone, templateName });
+      await supabase.from("whatsapp_message_log").insert({
+        to_phone: recipient.phone,
+        template_name: templateName,
+        status: "sent",
+        wa_message_id: messageId,
+      });
+      await supabase.from("notification").update({ sent_at: new Date().toISOString() }).eq("id", notification.id);
+    } catch {
+      await supabase.from("whatsapp_message_log").insert({
+        to_phone: recipient.phone,
+        template_name: templateName,
+        status: "failed",
+      });
+    }
+  }
+}
+
+/**
  * Notifies every family sponsor linked to a client that a visit completed. Visit/checkin
  * status is structural data a linked sponsor already sees without a consent grant (Domain 4
- * RLS), so no consent check gates this. Degrades to a logged, unsent `whatsapp_message_log`
- * row rather than throwing when WhatsApp isn't configured (Meta template approval is still
- * pending) or a sponsor has no phone on file — never blocks the caller's visit-logging flow.
+ * RLS), so no consent check gates this.
  */
-export async function notifyVisitComplete(
-  supabase: SupabaseClient<Database>,
-  clientId: string,
-) {
+export async function notifyVisitComplete(supabase: SupabaseClient<Database>, clientId: string) {
   const { data: sponsors } = await supabase.from("family_sponsor").select("user_id").eq("client_id", clientId);
 
   if (!sponsors || sponsors.length === 0) {
@@ -39,46 +86,30 @@ export async function notifyVisitComplete(
       sponsors.map((sponsor) => sponsor.user_id),
     );
 
-  const client = getWhatsappClient();
+  await notifyRecipients(supabase, sponsorUsers ?? [], WHATSAPP_TEMPLATES.visitComplete);
+}
 
-  for (const sponsor of sponsorUsers ?? []) {
-    const { data: notification } = await supabase
-      .from("notification")
-      .insert({ user_id: sponsor.id, channel: "whatsapp", template_id: WHATSAPP_TEMPLATES.visitComplete })
-      .select("id")
-      .single();
+/**
+ * Notifies staff that an escalation opened: every coordinator always, plus every clinical
+ * director for critical severity — matching CLAUDE.md's safeguarding-routing rule that
+ * critical/safeguarding matters reach the clinical director, not just whoever's on shift.
+ */
+export async function notifyEscalationOpened(supabase: SupabaseClient<Database>, severity: string) {
+  const roleSlugs = severity === "critical" ? ["coordinator", "clinical_director"] : ["coordinator"];
 
-    if (!notification) {
-      continue;
-    }
+  const { data: roles } = await supabase.from("role").select("id").in("slug", roleSlugs);
 
-    if (!client || !sponsor.phone) {
-      await supabase.from("whatsapp_message_log").insert({
-        to_phone: sponsor.phone ?? "unknown",
-        template_name: WHATSAPP_TEMPLATES.visitComplete,
-        status: "failed",
-      });
-      continue;
-    }
-
-    try {
-      const { messageId } = await client.sendTemplateMessage({
-        to: sponsor.phone,
-        templateName: WHATSAPP_TEMPLATES.visitComplete,
-      });
-      await supabase.from("whatsapp_message_log").insert({
-        to_phone: sponsor.phone,
-        template_name: WHATSAPP_TEMPLATES.visitComplete,
-        status: "sent",
-        wa_message_id: messageId,
-      });
-      await supabase.from("notification").update({ sent_at: new Date().toISOString() }).eq("id", notification.id);
-    } catch {
-      await supabase.from("whatsapp_message_log").insert({
-        to_phone: sponsor.phone,
-        template_name: WHATSAPP_TEMPLATES.visitComplete,
-        status: "failed",
-      });
-    }
+  if (!roles || roles.length === 0) {
+    return;
   }
+
+  const { data: staffUsers } = await supabase
+    .from("user")
+    .select("id, phone")
+    .in(
+      "role_id",
+      roles.map((role) => role.id),
+    );
+
+  await notifyRecipients(supabase, staffUsers ?? [], WHATSAPP_TEMPLATES.escalationAlert);
 }

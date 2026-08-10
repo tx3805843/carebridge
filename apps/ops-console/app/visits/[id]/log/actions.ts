@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { notifyVisitComplete } from "@/lib/whatsapp";
+import { notifyEscalationOpened, notifyVisitComplete } from "@/lib/whatsapp";
 
 export async function logVisitOutcome(visitId: string, formData: FormData) {
   const arrivedAt = String(formData.get("arrivedAt") ?? "");
@@ -89,6 +89,8 @@ export async function logVisitOutcome(visitId: string, formData: FormData) {
     if (escalationError) {
       redirect(`/visits/${visitId}/log?error=${encodeURIComponent(escalationError.message)}`);
     }
+
+    await notifyEscalationOpened(supabase, escalationSeverity);
   }
 
   const { error: statusError } = await supabase.from("visit").update({ status: "completed" }).eq("id", visitId);
