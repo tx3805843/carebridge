@@ -8,7 +8,7 @@ keep both in sync as migrations land.
 
 | # | Domain | Core entities | Module |
 |---|---|---|---|
-| 1 | Identity & Access | `user`, `role`, `family_sponsor`, `client_relationship`, `consent_grant` | `identity.ts` |
+| 1 | Identity & Access | `user`, `role`, `family_sponsor`, `authority_grant`, `consent_grant` | `identity.ts` |
 | 2 | Client & Care Plan | `client`, `care_plan`, `emergency_contact`, `decision_maker_hierarchy` | `care-plan.ts` |
 | 3 | Provider & Credentialing | `provider`, `credential`, `credential_verification_event`, `identity_verification`, `background_check`, `training_record`, `verified_profile` | `credentialing.ts` |
 | 4 | Scheduling & Visit Ops | `roster`, `zone`, `visit`, `visit_checkin`, `observation`, `task` | `scheduling.ts` |
