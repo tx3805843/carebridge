@@ -25,10 +25,20 @@ alter table client
   add column status text not null default 'inactive'
     check (status in ('active', 'inactive'));
 
-create function internal.check_client_activation_ready(target_client_id uuid)
+-- security invoker (the default, made explicit here): correctness depends on two things
+-- holding elsewhere — `client_write_staff` restricts every writer of `client.status` to
+-- staff, and staff has unconditional SELECT on `emergency_contact`, `care_plan`, and
+-- `authority_grant` via those tables' own `*_write_staff`/select policies — so a caller who
+-- can legitimately flip a client active can also see everything this function checks. If a
+-- future change narrows any of those three SELECT policies away from unconditional staff
+-- access, or a second write path lets a non-staff caller update `client.status` without going
+-- through `onboard_client_with_care_team`, this check can silently see a partial picture (or
+-- none at all) without anyone noticing why.
+create function internal.is_client_activation_ready(target_client_id uuid)
 returns boolean
 language sql
 stable
+security invoker
 set search_path = public, pg_temp
 as $$
   select
@@ -43,11 +53,12 @@ $$;
 create function public.enforce_client_activation_ready()
 returns trigger
 language plpgsql
+security invoker
 set search_path = public, pg_temp
 as $$
 begin
   if new.status = 'active' and (old is null or old.status is distinct from 'active') then
-    if not internal.check_client_activation_ready(new.id) then
+    if not internal.is_client_activation_ready(new.id) then
       raise exception
         'Client % cannot be activated: requires at least one emergency contact, one care plan, and one active authority grant',
         new.id;
