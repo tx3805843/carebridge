@@ -109,6 +109,9 @@ importers:
       '@carebridge/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@carebridge/whatsapp':
+        specifier: workspace:*
+        version: link:../../packages/whatsapp
       '@supabase/ssr':
         specifier: ^0.12.4
         version: 0.12.4(@supabase/supabase-js@2.112.2)

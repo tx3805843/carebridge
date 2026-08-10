@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["SUPABASE_SERVICE_ROLE_KEY"],
+  "globalEnv": ["SUPABASE_SERVICE_ROLE_KEY", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { notifyVisitComplete } from "@/lib/whatsapp";
 
 export async function logVisitOutcome(visitId: string, formData: FormData) {
   const arrivedAt = String(formData.get("arrivedAt") ?? "");
@@ -95,6 +96,8 @@ export async function logVisitOutcome(visitId: string, formData: FormData) {
   if (statusError) {
     redirect(`/visits/${visitId}/log?error=${encodeURIComponent(statusError.message)}`);
   }
+
+  await notifyVisitComplete(supabase, visit.client_id);
 
   redirect(`/visits/log?logged=${visitId}`);
 }
