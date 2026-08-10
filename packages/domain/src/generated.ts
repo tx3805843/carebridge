@@ -539,7 +539,7 @@ export type Database = {
       credential_verification_event: {
         Row: {
           created_at: string
-          created_by: string
+          created_by: string | null
           credential_id: string
           id: string
           notes: string | null
@@ -549,7 +549,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           credential_id: string
           id?: string
           notes?: string | null
@@ -559,7 +559,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           credential_id?: string
           id?: string
           notes?: string | null
@@ -1012,11 +1012,75 @@ export type Database = {
           },
         ]
       }
+      invoice: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          due_at: string | null
+          id: string
+          paid_at: string | null
+          status: string
+          subscription_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          created_by?: string
+          currency: string
+          due_at?: string | null
+          id?: string
+          paid_at?: string | null
+          status?: string
+          subscription_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          due_at?: string | null
+          id?: string
+          paid_at?: string | null
+          status?: string
+          subscription_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscription"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification: {
         Row: {
           channel: string
           created_at: string
-          created_by: string
+          created_by: string | null
           id: string
           sent_at: string | null
           template_id: string
@@ -1026,7 +1090,7 @@ export type Database = {
         Insert: {
           channel: string
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: string
           sent_at?: string | null
           template_id: string
@@ -1036,7 +1100,7 @@ export type Database = {
         Update: {
           channel?: string
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: string
           sent_at?: string | null
           template_id?: string
@@ -1104,6 +1168,66 @@ export type Database = {
             columns: ["visit_id"]
             isOneToOne: false
             referencedRelation: "visit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          currency: string
+          id: string
+          invoice_id: string
+          paid_at: string | null
+          payment_link_url: string | null
+          processor: string
+          processor_reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string
+          currency: string
+          id?: string
+          invoice_id: string
+          paid_at?: string | null
+          payment_link_url?: string | null
+          processor: string
+          processor_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          currency?: string
+          id?: string
+          invoice_id?: string
+          paid_at?: string | null
+          payment_link_url?: string | null
+          processor?: string
+          processor_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice"
             referencedColumns: ["id"]
           },
         ]
@@ -1239,6 +1363,60 @@ export type Database = {
             columns: ["zone_id"]
             isOneToOne: false
             referencedRelation: "zone"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription: {
+        Row: {
+          amount: number
+          billing_interval: string
+          client_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          id: string
+          plan_code: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_interval?: string
+          client_id: string
+          created_at?: string
+          created_by?: string
+          currency: string
+          id?: string
+          plan_code: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_interval?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          id?: string
+          plan_code?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
             referencedColumns: ["id"]
           },
         ]

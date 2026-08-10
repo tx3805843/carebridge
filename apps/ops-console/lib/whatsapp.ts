@@ -90,6 +90,39 @@ export async function notifyVisitComplete(supabase: SupabaseClient<Database>, cl
 }
 
 /**
+ * Notifies every billing-responsible sponsor for a client — deliberately narrower than
+ * notifyVisitComplete's "every linked sponsor": invoice/payment visibility is gated the same
+ * way in RLS (client_relationship.is_billing_responsible), not just family_sponsor linkage.
+ */
+async function billingResponsibleSponsorUsers(supabase: SupabaseClient<Database>, clientId: string) {
+  const { data: relationships } = await supabase
+    .from("client_relationship")
+    .select("sponsor_id")
+    .eq("client_id", clientId)
+    .eq("is_billing_responsible", true);
+
+  const sponsorIds = (relationships ?? []).map((r) => r.sponsor_id);
+  if (sponsorIds.length === 0) return [];
+
+  const { data: sponsors } = await supabase.from("family_sponsor").select("user_id").in("id", sponsorIds);
+  const userIds = (sponsors ?? []).map((s) => s.user_id);
+  if (userIds.length === 0) return [];
+
+  const { data: users } = await supabase.from("user").select("id, phone").in("id", userIds);
+  return users ?? [];
+}
+
+export async function notifyInvoiceReady(supabase: SupabaseClient<Database>, clientId: string) {
+  const recipients = await billingResponsibleSponsorUsers(supabase, clientId);
+  await notifyRecipients(supabase, recipients, WHATSAPP_TEMPLATES.invoiceReady);
+}
+
+export async function notifyPaymentReceived(supabase: SupabaseClient<Database>, clientId: string) {
+  const recipients = await billingResponsibleSponsorUsers(supabase, clientId);
+  await notifyRecipients(supabase, recipients, WHATSAPP_TEMPLATES.paymentReceived);
+}
+
+/**
  * Notifies staff that an escalation opened: every coordinator always, plus every clinical
  * director for critical severity — matching CLAUDE.md's safeguarding-routing rule that
  * critical/safeguarding matters reach the clinical director, not just whoever's on shift.

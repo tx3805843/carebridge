@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.credential-expiry-cron]
 verify_jwt = false
+
+[functions.paystack-webhook]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
