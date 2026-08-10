@@ -132,6 +132,96 @@ export type Database = {
           },
         ]
       }
+      authority_grant: {
+        Row: {
+          authority_type: string
+          client_id: string
+          created_at: string
+          created_by: string
+          effective_from: string | null
+          effective_until: string | null
+          evidence_document_ref: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          sponsor_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          authority_type: string
+          client_id: string
+          created_at?: string
+          created_by?: string
+          effective_from?: string | null
+          effective_until?: string | null
+          evidence_document_ref?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          sponsor_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          authority_type?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          effective_from?: string | null
+          effective_until?: string | null
+          evidence_document_ref?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          sponsor_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "authority_grant_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authority_grant_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authority_grant_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authority_grant_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authority_grant_sponsor_id_fkey"
+            columns: ["sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "family_sponsor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       background_check: {
         Row: {
           created_at: string
@@ -275,61 +365,6 @@ export type Database = {
             columns: ["zone_id"]
             isOneToOne: false
             referencedRelation: "zone"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_relationship: {
-        Row: {
-          client_id: string
-          created_at: string
-          created_by: string
-          id: string
-          is_billing_responsible: boolean
-          is_decision_maker: boolean
-          sponsor_id: string
-          updated_at: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          created_by?: string
-          id?: string
-          is_billing_responsible?: boolean
-          is_decision_maker?: boolean
-          sponsor_id: string
-          updated_at?: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          created_by?: string
-          id?: string
-          is_billing_responsible?: boolean
-          is_decision_maker?: boolean
-          sponsor_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_relationship_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "client"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_relationship_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_relationship_sponsor_id_fkey"
-            columns: ["sponsor_id"]
-            isOneToOne: false
-            referencedRelation: "family_sponsor"
             referencedColumns: ["id"]
           },
         ]
