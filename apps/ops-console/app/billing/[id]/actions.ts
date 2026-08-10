@@ -47,10 +47,11 @@ export async function generateInvoice(subscriptionId: string, _formData: FormDat
   // if none is on file yet, we still record the invoice + a linkless pending payment rather
   // than blocking invoice creation on it — staff can add the payment link manually later.
   const { data: billingRelationships } = await supabase
-    .from("client_relationship")
+    .from("authority_grant")
     .select("sponsor_id")
     .eq("client_id", subscription.client_id)
-    .eq("is_billing_responsible", true);
+    .eq("authority_type", "billing_responsible")
+    .eq("status", "active");
 
   const sponsorIds = (billingRelationships ?? []).map((r) => r.sponsor_id);
   const { data: sponsors } =

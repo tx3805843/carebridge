@@ -88,10 +88,11 @@ async function sendWhatsappTemplate(to: string, templateName: string): Promise<s
 
 async function notifyBillingResponsibleSponsors(supabase: ReturnType<typeof createClient>, clientId: string) {
   const { data: relationships } = await supabase
-    .from("client_relationship")
+    .from("authority_grant")
     .select("sponsor_id")
     .eq("client_id", clientId)
-    .eq("is_billing_responsible", true);
+    .eq("authority_type", "billing_responsible")
+    .eq("status", "active");
 
   const sponsorIds = (relationships ?? []).map((r) => r.sponsor_id);
   if (sponsorIds.length === 0) return;

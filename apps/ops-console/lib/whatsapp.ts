@@ -92,14 +92,16 @@ export async function notifyVisitComplete(supabase: SupabaseClient<Database>, cl
 /**
  * Notifies every billing-responsible sponsor for a client — deliberately narrower than
  * notifyVisitComplete's "every linked sponsor": invoice/payment visibility is gated the same
- * way in RLS (client_relationship.is_billing_responsible), not just family_sponsor linkage.
+ * way in RLS (authority_grant, authority_type='billing_responsible'), not just family_sponsor
+ * linkage.
  */
 async function billingResponsibleSponsorUsers(supabase: SupabaseClient<Database>, clientId: string) {
   const { data: relationships } = await supabase
-    .from("client_relationship")
+    .from("authority_grant")
     .select("sponsor_id")
     .eq("client_id", clientId)
-    .eq("is_billing_responsible", true);
+    .eq("authority_type", "billing_responsible")
+    .eq("status", "active");
 
   const sponsorIds = (relationships ?? []).map((r) => r.sponsor_id);
   if (sponsorIds.length === 0) return [];
