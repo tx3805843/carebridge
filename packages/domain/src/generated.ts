@@ -327,6 +327,7 @@ export type Database = {
           full_name: string
           id: string
           referral_source: string | null
+          status: string
           updated_at: string
           zone_id: string
         }
@@ -338,6 +339,7 @@ export type Database = {
           full_name: string
           id?: string
           referral_source?: string | null
+          status?: string
           updated_at?: string
           zone_id: string
         }
@@ -349,6 +351,7 @@ export type Database = {
           full_name?: string
           id?: string
           referral_source?: string | null
+          status?: string
           updated_at?: string
           zone_id?: string
         }
