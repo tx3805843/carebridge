@@ -22,3 +22,13 @@ additional_redirect_urls = ["http://localhost:3001"]
 
 [edge_runtime]
 enabled = true
+
+# Both functions below authenticate callers with their own scheme (HMAC signature / dedicated
+# bearer secret), never a Supabase user JWT — the default per-project JWT gate would reject
+# every real caller (Meta, pg_cron) before the function's own auth check ever runs. Read by
+# both `supabase functions serve` and `supabase functions deploy`.
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.credential-expiry-cron]
+verify_jwt = false

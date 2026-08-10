@@ -1,65 +1,20 @@
-/** Domain 3 — Provider & Credentialing. See docs/domain-model.md Part 3 for the trust-card/credential rules. */
+/** Domain 3 — Provider & Credentialing. Generated from live schema (see generated.ts) — no hand-written placeholders remain. */
+import type { Database } from "./generated";
 
-export type VerificationStatus = "unverified" | "pending" | "verified" | "expired" | "rejected";
-
-export interface Provider {
-  id: string;
-  userId: string;
-  role: "nurse" | "caregiver";
-  yearsExperience: number;
-  photoUrl: string | null;
-  verifiedProfileId: string | null;
-}
-
-/** Polymorphic credential record — one subsystem for NMC PIN, police report, training, etc. Do not fork per document type. */
-export interface Credential {
-  id: string;
-  providerId: string;
-  credentialTypeId: string;
-  issuingAuthority: string;
-  status: VerificationStatus;
-  expiryDate: string | null;
-  evidenceDocumentRef: string | null;
-}
-
-export interface CredentialVerificationEvent {
-  id: string;
-  credentialId: string;
-  performedBy: string;
-  outcome: VerificationStatus;
-  notes: string | null;
-  occurredAt: string;
-}
-
-export interface IdentityVerification {
-  id: string;
-  providerId: string;
-  vendor: "smile_id" | "youverify";
-  status: VerificationStatus;
-  verifiedAt: string | null;
-}
-
-export interface BackgroundCheck {
-  id: string;
-  providerId: string;
-  status: VerificationStatus;
-  documentRef: string;
-  expiresAt: string | null;
-}
-
-export interface TrainingRecord {
-  id: string;
-  providerId: string;
-  title: string;
-  cpdPoints: number;
-  completedAt: string;
-}
-
-export interface VerifiedProfile {
-  id: string;
-  providerId: string;
-  idVerified: boolean;
-  nmcLicensed: boolean;
-  backgroundChecked: boolean;
-  trainingCurrent: boolean;
-}
+export type CredentialType = Database["public"]["Tables"]["credential_type"]["Row"];
+export type Provider = Database["public"]["Tables"]["provider"]["Row"];
+export type ProviderInsert = Database["public"]["Tables"]["provider"]["Insert"];
+export type VerificationStatus = Database["public"]["Tables"]["credential"]["Row"]["status"];
+export type Credential = Database["public"]["Tables"]["credential"]["Row"];
+export type CredentialInsert = Database["public"]["Tables"]["credential"]["Insert"];
+export type CredentialVerificationEvent = Database["public"]["Tables"]["credential_verification_event"]["Row"];
+export type CredentialVerificationEventInsert =
+  Database["public"]["Tables"]["credential_verification_event"]["Insert"];
+export type IdentityVerification = Database["public"]["Tables"]["identity_verification"]["Row"];
+export type IdentityVerificationInsert = Database["public"]["Tables"]["identity_verification"]["Insert"];
+export type BackgroundCheck = Database["public"]["Tables"]["background_check"]["Row"];
+export type BackgroundCheckInsert = Database["public"]["Tables"]["background_check"]["Insert"];
+export type TrainingRecord = Database["public"]["Tables"]["training_record"]["Row"];
+export type TrainingRecordInsert = Database["public"]["Tables"]["training_record"]["Insert"];
+export type VerifiedProfile = Database["public"]["Tables"]["verified_profile"]["Row"];
+export type VerifiedProfileInsert = Database["public"]["Tables"]["verified_profile"]["Insert"];

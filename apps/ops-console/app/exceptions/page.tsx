@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { acknowledgeEscalation, resolveEscalation } from "./actions";
@@ -14,6 +15,7 @@ export default async function ExceptionsPage({
 
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
+  const warningCutoffIso = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const [{ data: pastDueVisits }, { data: openEscalations }] = await Promise.all([
     supabase
@@ -30,6 +32,20 @@ export default async function ExceptionsPage({
       .order("created_at", { ascending: false }),
   ]);
 
+  // Credential expiry — the "flag within 30 days" half of CLAUDE.md's credential-expiry
+  // guardrail (the "auto-suspend on lapse" half is verified_profile.nmc_licensed, computed by
+  // the credential-expiry-cron Edge Function; this just surfaces both signals for staff).
+  const [{ data: expiringCredentials }, { data: suspendedProfiles }] = await Promise.all([
+    supabase
+      .from("credential")
+      .select("id, provider_id, credential_type_id, expiry_date")
+      .not("expiry_date", "is", null)
+      .lte("expiry_date", warningCutoffIso)
+      .neq("status", "expired")
+      .order("expiry_date", { ascending: true }),
+    supabase.from("verified_profile").select("provider_id").eq("nmc_licensed", false),
+  ]);
+
   const lateVisits = (pastDueVisits ?? []).filter(
     (visit) => visit.status !== "completed" && visit.status !== "cancelled",
   );
@@ -40,28 +56,55 @@ export default async function ExceptionsPage({
   const clientIds = [
     ...new Set([...lateVisits.map((visit) => visit.client_id), ...sortedEscalations.map((e) => e.client_id)]),
   ];
-  const providerIds = [...new Set(lateVisits.map((visit) => visit.provider_id))];
+  const providerIds = [
+    ...new Set([
+      ...lateVisits.map((visit) => visit.provider_id),
+      ...(expiringCredentials ?? []).map((c) => c.provider_id),
+      ...(suspendedProfiles ?? []).map((p) => p.provider_id),
+    ]),
+  ];
 
-  const [{ data: clients }, { data: providers }] = await Promise.all([
+  const [{ data: clients }, { data: providers }, { data: credentialTypes }, { data: nurseRole }] = await Promise.all([
     clientIds.length > 0
       ? supabase.from("client").select("id, full_name").in("id", clientIds)
       : Promise.resolve({ data: [] }),
     providerIds.length > 0
       ? supabase.from("provider").select("id, user_id").in("id", providerIds)
       : Promise.resolve({ data: [] }),
+    supabase.from("credential_type").select("id, label"),
+    supabase.from("role").select("id").eq("slug", "nurse").single(),
   ]);
 
   const providerUserIds = (providers ?? []).map((provider) => provider.user_id);
   const { data: providerUsers } =
     providerUserIds.length > 0
-      ? await supabase.from("user").select("id, full_name").in("id", providerUserIds)
+      ? await supabase.from("user").select("id, full_name, role_id").in("id", providerUserIds)
       : { data: [] };
 
-  const providerNameByUserId = new Map((providerUsers ?? []).map((user) => [user.id, user.full_name]));
+  const providerUserById = new Map((providerUsers ?? []).map((user) => [user.id, user]));
   const clientNameById = new Map((clients ?? []).map((client) => [client.id, client.full_name]));
   const providerNameById = new Map(
-    (providers ?? []).map((provider) => [provider.id, providerNameByUserId.get(provider.user_id) ?? "Unnamed provider"]),
+    (providers ?? []).map((provider) => [provider.id, providerUserById.get(provider.user_id)?.full_name ?? "Unnamed provider"]),
   );
+  const credentialTypeLabelById = new Map((credentialTypes ?? []).map((type) => [type.id, type.label]));
+
+  const sortedExpiringCredentials = [...(expiringCredentials ?? [])].sort((a, b) =>
+    (a.expiry_date ?? "").localeCompare(b.expiry_date ?? ""),
+  );
+
+  // Only nurses have an NMC PIN/AIN — verified_profile.nmc_licensed is trivially false for
+  // every caregiver too (they never had it), so "suspended" here means "a nurse whose
+  // scheduling eligibility actually lapsed," not "everyone without the flag set."
+  const suspendedNurseProviderIds = new Set(
+    (suspendedProfiles ?? [])
+      .filter((profile) => {
+        const provider = (providers ?? []).find((p) => p.id === profile.provider_id);
+        const user = provider ? providerUserById.get(provider.user_id) : undefined;
+        return user?.role_id === nurseRole?.id;
+      })
+      .map((profile) => profile.provider_id),
+  );
+  const suspendedProviders = (providers ?? []).filter((provider) => suspendedNurseProviderIds.has(provider.id));
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-10 p-24">
@@ -152,6 +195,55 @@ export default async function ExceptionsPage({
             ))}
           </div>
         )}
+      </section>
+
+      <section className="flex w-full max-w-3xl flex-col gap-3">
+        <h2 className="text-lg font-medium">Credential expiry</h2>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Expiring within 30 days</h3>
+          {sortedExpiringCredentials.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing expiring soon.</p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-muted-foreground">
+                  <th className="py-2">Provider</th>
+                  <th className="py-2">Credential</th>
+                  <th className="py-2">Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedExpiringCredentials.map((credential) => (
+                  <tr key={credential.id} className="border-t border-border">
+                    <td className="py-2">{providerNameById.get(credential.provider_id) ?? credential.provider_id}</td>
+                    <td className="py-2">{credentialTypeLabelById.get(credential.credential_type_id) ?? "—"}</td>
+                    <td className="py-2">{credential.expiry_date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Suspended from scheduling (lapsed NMC PIN/AIN)
+          </h3>
+          {suspendedProviders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No nurses currently suspended.</p>
+          ) : (
+            <ul className="flex flex-col gap-1 text-sm">
+              {suspendedProviders.map((provider) => (
+                <li key={provider.id}>
+                  <Link href={`/providers/${provider.id}`} className="underline">
+                    {providerNameById.get(provider.id) ?? provider.id}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
     </main>
   );

@@ -34,6 +34,9 @@ export default async function Home({
         <Link href="/roster" className={buttonVariants({ variant: "outline" })}>
           Roster
         </Link>
+        <Link href="/providers" className={buttonVariants({ variant: "outline" })}>
+          Providers
+        </Link>
         <Link href="/exceptions" className={buttonVariants({ variant: "outline" })}>
           Exception queue
         </Link>
