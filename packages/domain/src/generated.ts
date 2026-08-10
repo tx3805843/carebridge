@@ -764,10 +764,12 @@ export type Database = {
         Row: {
           acknowledged_at: string | null
           acknowledged_by: string | null
+          assigned_to: string | null
           client_id: string
           created_at: string
           created_by: string
           id: string
+          outcome_category: string | null
           reason: string
           resolution_notes: string | null
           resolved_at: string | null
@@ -781,10 +783,12 @@ export type Database = {
         Insert: {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          assigned_to?: string | null
           client_id: string
           created_at?: string
           created_by?: string
           id?: string
+          outcome_category?: string | null
           reason: string
           resolution_notes?: string | null
           resolved_at?: string | null
@@ -798,10 +802,12 @@ export type Database = {
         Update: {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          assigned_to?: string | null
           client_id?: string
           created_at?: string
           created_by?: string
           id?: string
+          outcome_category?: string | null
           reason?: string
           resolution_notes?: string | null
           resolved_at?: string | null
@@ -816,6 +822,13 @@ export type Database = {
           {
             foreignKeyName: "escalation_acknowledged_by_fkey"
             columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_assigned_to_fkey"
+            columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "user"
             referencedColumns: ["id"]

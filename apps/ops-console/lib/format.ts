@@ -28,6 +28,18 @@ export function formatDateTime(iso: string | null | undefined): string {
   return `${DATE_TIME_FORMATTER.format(new Date(iso))} Accra time (GMT)`;
 }
 
+// Short relative age for triage lists ("18m ago") — the absolute Accra-time formatters above
+// stay the source of truth in detail views; this is only for scanning a queue at a glance.
+export function formatRelativeAge(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
 // `subscription.plan_code` is free text (e.g. "standard_weekly_care") entered by staff at
 // subscription creation — there's no plan registry yet (that's Increment D4, a real product
 // catalog). This only stops the raw snake_case from leaking into operator-facing copy; it does
