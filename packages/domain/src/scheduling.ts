@@ -1,49 +1,15 @@
-/** Domain 4 — Scheduling & Visit Ops. Visit is the atomic unit of trust; field-app writes offline-first via PowerSync. */
+/** Domain 4 — Scheduling & Visit Ops. Generated from live schema (see generated.ts) — no hand-written placeholders remain. */
+import type { Database } from "./generated";
 
-export interface Zone {
-  id: string;
-  name: string;
-}
-
-export interface Roster {
-  id: string;
-  providerId: string;
-  zoneId: string;
-  weekStarting: string;
-}
-
-export type VisitStatus = "scheduled" | "en_route" | "in_progress" | "completed" | "missed" | "cancelled";
-
-export interface Visit {
-  id: string;
-  clientId: string;
-  providerId: string;
-  carePlanId: string;
-  scheduledStart: string;
-  scheduledEnd: string;
-  status: VisitStatus;
-}
-
-export interface VisitCheckin {
-  id: string;
-  visitId: string;
-  event: "en_route" | "arrived" | "departed";
-  occurredAt: string;
-  /** Purged after visit closes — see location-privacy note in docs/domain-model.md */
-  geoZoneOnly: string | null;
-}
-
-export interface Observation {
-  id: string;
-  visitId: string;
-  type: string;
-  value: string;
-  recordedAt: string;
-}
-
-export interface Task {
-  id: string;
-  visitId: string;
-  description: string;
-  completed: boolean;
-}
+export type Zone = Database["public"]["Tables"]["zone"]["Row"];
+export type Roster = Database["public"]["Tables"]["roster"]["Row"];
+export type RosterInsert = Database["public"]["Tables"]["roster"]["Insert"];
+export type VisitStatus = Database["public"]["Tables"]["visit"]["Row"]["status"];
+export type Visit = Database["public"]["Tables"]["visit"]["Row"];
+export type VisitInsert = Database["public"]["Tables"]["visit"]["Insert"];
+export type VisitCheckin = Database["public"]["Tables"]["visit_checkin"]["Row"];
+export type VisitCheckinInsert = Database["public"]["Tables"]["visit_checkin"]["Insert"];
+export type Observation = Database["public"]["Tables"]["observation"]["Row"];
+export type ObservationInsert = Database["public"]["Tables"]["observation"]["Insert"];
+export type Task = Database["public"]["Tables"]["task"]["Row"];
+export type TaskInsert = Database["public"]["Tables"]["task"]["Insert"];

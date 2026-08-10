@@ -1,38 +1,11 @@
-/** Domain 7 — Communications & Alerts. Escalation is first-class, not a notification subtype. */
+/** Domain 7 — Communications & Alerts. Generated from live schema (see generated.ts) — no hand-written placeholders remain. */
+import type { Database } from "./generated";
 
-export interface Notification {
-  id: string;
-  userId: string;
-  channel: "whatsapp" | "sms" | "push" | "email";
-  templateId: string;
-  sentAt: string | null;
-}
-
-export interface WhatsappMessageLog {
-  id: string;
-  toPhone: string;
-  templateName: string;
-  status: "queued" | "sent" | "delivered" | "read" | "failed";
-  waMessageId: string | null;
-  sentAt: string;
-}
-
-export type EscalationSeverity = "low" | "medium" | "high" | "critical";
-
-export interface Escalation {
-  id: string;
-  visitId: string | null;
-  clientId: string;
-  severity: EscalationSeverity;
-  triggeredByRuleId: string | null;
-  status: "open" | "acknowledged" | "resolved";
-  createdAt: string;
-}
-
-export interface AlertRule {
-  id: string;
-  name: string;
-  condition: string;
-  severity: EscalationSeverity;
-  active: boolean;
-}
+export type Notification = Database["public"]["Tables"]["notification"]["Row"];
+export type NotificationInsert = Database["public"]["Tables"]["notification"]["Insert"];
+export type WhatsappMessageLog = Database["public"]["Tables"]["whatsapp_message_log"]["Row"];
+export type WhatsappMessageLogInsert = Database["public"]["Tables"]["whatsapp_message_log"]["Insert"];
+export type Escalation = Database["public"]["Tables"]["escalation"]["Row"];
+export type EscalationInsert = Database["public"]["Tables"]["escalation"]["Insert"];
+export type AlertRule = Database["public"]["Tables"]["alert_rule"]["Row"];
+export type AlertRuleInsert = Database["public"]["Tables"]["alert_rule"]["Insert"];

@@ -8,5 +8,7 @@
   --primary: 221 83% 53%;
   --primary-foreground: 0 0% 100%;
   --border: 214 32% 91%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
   --radius: 0.5rem;
 }

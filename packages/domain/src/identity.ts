@@ -1,38 +1,11 @@
-/** Domain 1 — Identity & Access. Placeholder shapes; superseded by `supabase gen types` once schema lands. */
+/** Domain 1 — Identity & Access. Generated from live schema (see generated.ts) — no hand-written placeholders remain. */
+import type { Database } from "./generated";
 
-export type Role = "coordinator" | "clinical_director" | "nurse" | "caregiver" | "family_sponsor" | "admin";
-
-export interface User {
-  id: string;
-  role: Role;
-  fullName: string;
-  email: string;
-  phone: string;
-  createdAt: string;
-}
-
-export interface FamilySponsor {
-  id: string;
-  userId: string;
-  clientId: string;
-  relationship: string;
-}
-
-export interface ClientRelationship {
-  id: string;
-  clientId: string;
-  sponsorId: string;
-  isDecisionMaker: boolean;
-  isBillingResponsible: boolean;
-}
-
-export type ConsentScope = "clinical_detail" | "billing" | "location_tracking" | "photos";
-
-export interface ConsentGrant {
-  id: string;
-  clientId: string;
-  granteeUserId: string;
-  scope: ConsentScope;
-  grantedAt: string;
-  revokedAt: string | null;
-}
+export type Role = Database["public"]["Tables"]["role"]["Row"];
+export type User = Database["public"]["Tables"]["user"]["Row"];
+export type FamilySponsor = Database["public"]["Tables"]["family_sponsor"]["Row"];
+export type FamilySponsorInsert = Database["public"]["Tables"]["family_sponsor"]["Insert"];
+export type ClientRelationship = Database["public"]["Tables"]["client_relationship"]["Row"];
+export type ClientRelationshipInsert = Database["public"]["Tables"]["client_relationship"]["Insert"];
+export type ConsentGrant = Database["public"]["Tables"]["consent_grant"]["Row"];
+export type ConsentGrantInsert = Database["public"]["Tables"]["consent_grant"]["Insert"];

@@ -12,10 +12,12 @@
   "dependencies": {
     "@carebridge/domain": "workspace:*",
     "@carebridge/ui": "workspace:*",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.45.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@carebridge/config": "workspace:*",

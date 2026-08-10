@@ -5,6 +5,8 @@
  * can slot in without call-site churn.
  */
 
+export type { Database } from "./generated";
+
 export * from "./identity";
 export * from "./care-plan";
 export * from "./credentialing";
