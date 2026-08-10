@@ -1,5 +1,7 @@
+import { PageHeader } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/app-shell";
 
 /**
  * Phase 1 exit criterion: "Visit completion rate, late/missed-visit rate, incident rate,
@@ -22,7 +24,7 @@ import { createClient } from "@/lib/supabase/server";
  * the denominator rather than counted as "not a referral").
  */
 export default async function DashboardPage() {
-  await requireStaffUser();
+  const staffUser = await requireStaffUser();
 
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
@@ -67,11 +69,11 @@ export default async function DashboardPage() {
   const referralRate = recordedReferrals.length > 0 ? (familyReferrals / recordedReferrals.length) * 100 : null;
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 p-24">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+    <AppShell user={staffUser}>
+      <PageHeader title="Dashboard" description="All-time metrics — no date range yet, pilot scale doesn't need it." />
 
       <div className="grid w-full max-w-3xl grid-cols-2 gap-4">
-        <div className="rounded-md border border-border p-4">
+        <div className="rounded-md border border-border bg-surface p-4">
           <p className="text-sm text-muted-foreground">Visit completion rate</p>
           <p className="text-2xl font-semibold">
             {completionRate === null ? "—" : `${completionRate.toFixed(1)}%`}
@@ -79,7 +81,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">{completed} of {due} due visits</p>
         </div>
 
-        <div className="rounded-md border border-border p-4">
+        <div className="rounded-md border border-border bg-surface p-4">
           <p className="text-sm text-muted-foreground">Late / missed-visit rate</p>
           <p className="text-2xl font-semibold">
             {lateOrMissedRate === null ? "—" : `${lateOrMissedRate.toFixed(1)}%`}
@@ -87,7 +89,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">{due - completed} of {due} due visits</p>
         </div>
 
-        <div className="rounded-md border border-border p-4">
+        <div className="rounded-md border border-border bg-surface p-4">
           <p className="text-sm text-muted-foreground">Incident rate</p>
           <p className="text-2xl font-semibold">
             {incidentRatePer100Visits === null ? "—" : `${incidentRatePer100Visits.toFixed(1)} / 100 visits`}
@@ -95,7 +97,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">{incidentCount ?? 0} incident report(s) logged</p>
         </div>
 
-        <div className="rounded-md border border-border p-4">
+        <div className="rounded-md border border-border bg-surface p-4">
           <p className="text-sm text-muted-foreground">MRR (active subscriptions)</p>
           {mrrByCurrency.size === 0 ? (
             <p className="text-2xl font-semibold">—</p>
@@ -107,13 +109,13 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">Shown per currency — no FX conversion applied</p>
         </div>
 
-        <div className="rounded-md border border-border p-4">
+        <div className="rounded-md border border-border bg-surface p-4">
           <p className="text-sm text-muted-foreground">Staff retention</p>
           <p className="text-2xl font-semibold">{retentionRate === null ? "—" : `${retentionRate.toFixed(1)}%`}</p>
           <p className="text-xs text-muted-foreground">{activeProviders} of {totalProviders} providers active</p>
         </div>
 
-        <div className="rounded-md border border-border p-4">
+        <div className="rounded-md border border-border bg-surface p-4">
           <p className="text-sm text-muted-foreground">Referral rate</p>
           <p className="text-2xl font-semibold">{referralRate === null ? "—" : `${referralRate.toFixed(1)}%`}</p>
           <p className="text-xs text-muted-foreground">
@@ -121,6 +123,6 @@ export default async function DashboardPage() {
           </p>
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

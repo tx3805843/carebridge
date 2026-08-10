@@ -15,6 +15,26 @@ module.exports = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
+        surface: "hsl(var(--surface))",
+        brand: {
+          800: "hsl(var(--brand-800))",
+        },
+        critical: {
+          DEFAULT: "hsl(var(--critical))",
+          foreground: "hsl(var(--critical-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        information: {
+          DEFAULT: "hsl(var(--information))",
+          foreground: "hsl(var(--information-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

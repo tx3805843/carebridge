@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
-import { Button } from "@carebridge/ui";
+import { ConfirmSubmitButton, EntitySummaryCard } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatDateTime, formatPlanName } from "@/lib/format";
+import { AppShell } from "@/components/app-shell";
 import { generateInvoice } from "./actions";
 
 export default async function SubscriptionDetailPage({
@@ -12,7 +13,7 @@ export default async function SubscriptionDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; created?: string; generated?: string }>;
 }) {
-  await requireStaffUser();
+  const staffUser = await requireStaffUser();
   const { id } = await params;
   const { error, created, generated } = await searchParams;
 
@@ -54,24 +55,40 @@ export default async function SubscriptionDetailPage({
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 p-24">
-      <h1 className="text-2xl font-semibold">{client?.full_name ?? "Unknown client"}</h1>
-      <p className="text-muted-foreground">
-        {formatPlanName(subscription.plan_code)} — {subscription.currency} {subscription.amount} /{" "}
-        {subscription.billing_interval} — {subscription.status}
-      </p>
+    <AppShell
+      user={staffUser}
+      toast={created ? { message: "Subscription created." } : undefined}
+    >
+      <EntitySummaryCard
+        title={client?.full_name ?? "Unknown client"}
+        meta={[
+          { label: "Plan", value: formatPlanName(subscription.plan_code) },
+          { label: "Amount", value: `${subscription.currency} ${subscription.amount} / ${subscription.billing_interval}` },
+          { label: "Status", value: subscription.status },
+        ]}
+      />
 
-      {created ? <p className="text-sm text-emerald-700">Subscription created.</p> : null}
-      {generated ? <p className="text-sm text-emerald-700">Invoice generated.</p> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {generated ? <p className="mb-4 text-sm text-success">Invoice generated.</p> : null}
+      {error ? <p className="mb-4 text-sm text-critical">{error}</p> : null}
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Invoices</h2>
           <form action={generateInvoice.bind(null, subscription.id)}>
-            <Button type="submit" size="sm">
+            <ConfirmSubmitButton
+              size="sm"
+              confirmTitle="Generate invoice"
+              confirmDescription={
+                <>
+                  This creates a live invoice for <strong>{client?.full_name ?? "this client"}</strong> —{" "}
+                  {subscription.currency} {subscription.amount} — and requests a payment link from the
+                  processor. This cannot be undone from here.
+                </>
+              }
+              confirmLabel="Generate invoice"
+            >
               Generate invoice
-            </Button>
+            </ConfirmSubmitButton>
           </form>
         </div>
         {(invoices ?? []).length === 0 ? (
@@ -79,7 +96,7 @@ export default async function SubscriptionDetailPage({
         ) : (
           <div className="flex flex-col gap-3">
             {(invoices ?? []).map((invoice) => (
-              <div key={invoice.id} className="flex flex-col gap-1 rounded-md border border-border p-4 text-sm">
+              <div key={invoice.id} className="flex flex-col gap-1 rounded-md border border-border bg-surface p-4 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
                     {invoice.currency} {invoice.amount} — {invoice.status}
@@ -106,6 +123,6 @@ export default async function SubscriptionDetailPage({
           </div>
         )}
       </section>
-    </main>
+    </AppShell>
   );
 }

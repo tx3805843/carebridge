@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { PageHeader } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
+import { AppShell } from "@/components/app-shell";
 import { acknowledgeEscalation, resolveEscalation } from "./actions";
 
 const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -11,7 +13,7 @@ export default async function ExceptionsPage({
 }: {
   searchParams: Promise<{ error?: string; acknowledged?: string; resolved?: string }>;
 }) {
-  await requireStaffUser();
+  const staffUser = await requireStaffUser();
   const { error, acknowledged, resolved } = await searchParams;
 
   const supabase = await createClient();
@@ -108,11 +110,12 @@ export default async function ExceptionsPage({
   const suspendedProviders = (providers ?? []).filter((provider) => suspendedNurseProviderIds.has(provider.id));
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-10 p-24">
-      <h1 className="text-2xl font-semibold">Exception queue</h1>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {acknowledged ? <p className="text-sm text-emerald-700">Escalation acknowledged.</p> : null}
-      {resolved ? <p className="text-sm text-emerald-700">Escalation resolved.</p> : null}
+    <AppShell user={staffUser}>
+      <PageHeader title="Exception queue" />
+      {error ? <p className="text-sm text-critical">{error}</p> : null}
+      {acknowledged ? <p className="text-sm text-success">Escalation acknowledged.</p> : null}
+      {resolved ? <p className="text-sm text-success">Escalation resolved.</p> : null}
+      <div className="flex w-full max-w-3xl flex-col gap-10">
 
       <section className="flex w-full max-w-3xl flex-col gap-3">
         <h2 className="text-lg font-medium">Late & missed visits</h2>
@@ -149,7 +152,7 @@ export default async function ExceptionsPage({
         ) : (
           <div className="flex flex-col gap-4">
             {sortedEscalations.map((escalation) => (
-              <div key={escalation.id} className="flex flex-col gap-2 rounded-md border border-border p-4">
+              <div key={escalation.id} className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
                     {clientNameById.get(escalation.client_id) ?? escalation.client_id} —{" "}
@@ -246,6 +249,7 @@ export default async function ExceptionsPage({
           )}
         </div>
       </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }

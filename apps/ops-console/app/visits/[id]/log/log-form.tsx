@@ -105,7 +105,7 @@ export function LogVisitForm({
         ) : null}
       </fieldset>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-critical">{error}</p> : null}
       <Button type="submit">Log visit outcome</Button>
     </form>
   );

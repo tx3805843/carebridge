@@ -10,6 +10,7 @@ export const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:opacity-90",
         outline: "border border-border bg-background hover:bg-muted",
         ghost: "hover:bg-muted",
+        destructive: "bg-critical text-critical-foreground hover:opacity-90",
       },
       size: {
         default: "h-10 px-4 py-2",

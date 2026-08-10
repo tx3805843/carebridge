@@ -1,15 +1,24 @@
 import Link from "next/link";
-import { buttonVariants } from "@carebridge/ui";
+import { buttonVariants, DataTable, PageHeader } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
+import { AppShell } from "@/components/app-shell";
+
+interface VisitRow {
+  id: string;
+  client_id: string;
+  provider_id: string;
+  scheduled_start: string;
+  status: string;
+}
 
 export default async function VisitsToLogPage({
   searchParams,
 }: {
   searchParams: Promise<{ logged?: string }>;
 }) {
-  await requireStaffUser();
+  const staffUser = await requireStaffUser();
   const { logged } = await searchParams;
 
   const supabase = await createClient();
@@ -45,39 +54,30 @@ export default async function VisitsToLogPage({
   );
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-6 p-24">
-      <h1 className="text-2xl font-semibold">Log a visit</h1>
-      {logged ? <p className="text-sm text-emerald-700">Visit outcome logged.</p> : null}
-
-      <table className="w-full max-w-2xl text-left text-sm">
-        <thead>
-          <tr className="text-muted-foreground">
-            <th className="py-2">Client</th>
-            <th className="py-2">Provider</th>
-            <th className="py-2">Scheduled</th>
-            <th className="py-2">Status</th>
-            <th className="py-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {(visits ?? []).map((visit) => (
-            <tr key={visit.id} className="border-t border-border">
-              <td className="py-2">{clientNameById.get(visit.client_id) ?? visit.client_id}</td>
-              <td className="py-2">{providerNameById.get(visit.provider_id) ?? visit.provider_id}</td>
-              <td className="py-2">{formatDateTime(visit.scheduled_start)}</td>
-              <td className="py-2">{visit.status}</td>
-              <td className="py-2">
-                <Link href={`/visits/${visit.id}/log`} className={buttonVariants({ size: "sm" })}>
+    <AppShell user={staffUser} toast={logged ? { message: "Visit outcome logged." } : undefined}>
+      <PageHeader title="Log a visit" />
+      <div className="w-full max-w-2xl">
+        <DataTable<VisitRow>
+          rows={visits ?? []}
+          rowKey={(row) => row.id}
+          emptyMessage="No visits waiting to be logged."
+          columns={[
+            { key: "client", header: "Client", render: (row) => clientNameById.get(row.client_id) ?? row.client_id },
+            { key: "provider", header: "Provider", render: (row) => providerNameById.get(row.provider_id) ?? row.provider_id },
+            { key: "scheduled", header: "Scheduled", render: (row) => formatDateTime(row.scheduled_start) },
+            { key: "status", header: "Status", render: (row) => row.status },
+            {
+              key: "action",
+              header: "",
+              render: (row) => (
+                <Link href={`/visits/${row.id}/log`} className={buttonVariants({ size: "sm" })}>
                   Log outcome
                 </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {(visits ?? []).length === 0 ? (
-        <p className="text-sm text-muted-foreground">No visits waiting to be logged.</p>
-      ) : null}
-    </main>
+              ),
+            },
+          ]}
+        />
+      </div>
+    </AppShell>
   );
 }

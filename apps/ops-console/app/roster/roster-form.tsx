@@ -42,7 +42,7 @@ export function RosterForm({ providers, zones, error }: { providers: Option[]; z
         <input type="date" name="weekStarting" required className="rounded-md border border-border px-3 py-2" />
       </label>
       <Button type="submit">Assign</Button>
-      {error ? <p className="w-full text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="w-full text-sm text-critical">{error}</p> : null}
     </form>
   );
 }

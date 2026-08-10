@@ -50,7 +50,7 @@ export function NewSubscriptionForm({ clients, error }: { clients: ClientOption[
           </select>
         </label>
       </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-critical">{error}</p> : null}
       <Button type="submit">Create subscription</Button>
     </form>
   );

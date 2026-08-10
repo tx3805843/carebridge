@@ -44,7 +44,7 @@ export function ProviderOnboardForm({ users, error }: { users: UserOption[]; err
         placeholder="Photo URL (optional)"
         className="rounded-md border border-border px-3 py-2"
       />
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-critical">{error}</p> : null}
       <Button type="submit" disabled={users.length === 0}>
         Onboard provider
       </Button>

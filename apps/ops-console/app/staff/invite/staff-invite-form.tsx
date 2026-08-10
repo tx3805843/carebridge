@@ -40,7 +40,7 @@ export function StaffInviteForm({ roles, error }: { roles: RoleOption[]; error?:
         password reset/activation flow is completed (not built yet, see roadmap); until then,
         set a password for them directly if they need access sooner.
       </p>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-critical">{error}</p> : null}
       <Button type="submit">Create staff account</Button>
     </form>
   );

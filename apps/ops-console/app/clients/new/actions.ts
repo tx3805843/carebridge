@@ -123,5 +123,5 @@ export async function onboardClient(formData: FormData) {
     );
   }
 
-  redirect(`/?onboarded=${clientId}`);
+  redirect(`/clients/new?onboarded=${clientId}`);
 }

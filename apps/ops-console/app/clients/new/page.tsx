@@ -1,22 +1,25 @@
+import { PageHeader } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/app-shell";
 import { NewClientForm } from "./client-form";
 
 export default async function NewClientPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; onboarded?: string }>;
 }) {
-  await requireStaffUser();
-  const { error } = await searchParams;
+  const staffUser = await requireStaffUser();
+  const { error, onboarded } = await searchParams;
 
   const supabase = await createClient();
   const { data: zones } = await supabase.from("zone").select("id, name").order("name");
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-6 p-24">
-      <h1 className="text-2xl font-semibold">Onboard a new client</h1>
+    <AppShell user={staffUser}>
+      <PageHeader title="Onboard a new client" />
+      {onboarded ? <p className="mb-4 text-sm text-success">Client onboarded (id {onboarded}).</p> : null}
       <NewClientForm zones={zones ?? []} error={error} />
-    </main>
+    </AppShell>
   );
 }

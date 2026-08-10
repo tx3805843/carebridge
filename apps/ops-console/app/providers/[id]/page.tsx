@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
-import { Button } from "@carebridge/ui";
+import { Button, DataTable, EntitySummaryCard } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
+import { AppShell } from "@/components/app-shell";
 import {
   addBackgroundCheck,
   addCredential,
@@ -17,6 +18,35 @@ const EMPLOYMENT_STATUSES = ["active", "on_leave", "departed"];
 
 const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "expired", "rejected"];
 
+interface CredentialRow {
+  id: string;
+  credential_type_id: string;
+  issuing_authority: string;
+  status: string;
+  expiry_date: string | null;
+}
+
+interface IdentityVerificationRow {
+  id: string;
+  vendor: string;
+  status: string;
+  verified_at: string | null;
+}
+
+interface BackgroundCheckRow {
+  id: string;
+  status: string;
+  document_ref: string;
+  expires_at: string | null;
+}
+
+interface TrainingRecordRow {
+  id: string;
+  title: string;
+  cpd_points: number;
+  completed_at: string | null;
+}
+
 export default async function ProviderDetailPage({
   params,
   searchParams,
@@ -24,7 +54,7 @@ export default async function ProviderDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; added?: string; updated?: string; onboarded?: string }>;
 }) {
-  await requireStaffUser();
+  const staffUser = await requireStaffUser();
   const { id } = await params;
   const { error, added, updated, onboarded } = await searchParams;
 
@@ -85,16 +115,17 @@ export default async function ProviderDetailPage({
   const boundUpdateProfile = updateVerifiedProfile.bind(null, provider.id);
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 p-24">
-      <h1 className="text-2xl font-semibold">{user?.full_name ?? "Unnamed provider"}</h1>
-      <p className="text-muted-foreground">
-        {user?.email ?? "no email"} · {user?.phone ?? "no phone"} · {provider.years_experience} yrs experience
-      </p>
+    <AppShell user={staffUser}>
+      <EntitySummaryCard
+        title={user?.full_name ?? "Unnamed provider"}
+        subtitle={`${user?.email ?? "no email"} · ${user?.phone ?? "no phone"}`}
+        meta={[{ label: "Experience", value: `${provider.years_experience} yrs` }]}
+      />
 
-      {onboarded ? <p className="text-sm text-emerald-700">Provider onboarded.</p> : null}
-      {added ? <p className="text-sm text-emerald-700">Added {added}.</p> : null}
-      {updated ? <p className="text-sm text-emerald-700">Updated {updated}.</p> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {onboarded ? <p className="text-sm text-success">Provider onboarded.</p> : null}
+      {added ? <p className="text-sm text-success">Added {added}.</p> : null}
+      {updated ? <p className="text-sm text-success">Updated {updated}.</p> : null}
+      {error ? <p className="text-sm text-critical">{error}</p> : null}
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <h2 className="text-lg font-medium">Employment status</h2>
@@ -165,26 +196,17 @@ export default async function ProviderDetailPage({
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <h2 className="text-lg font-medium">Credentials</h2>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th className="py-2">Type</th>
-              <th className="py-2">Issuing authority</th>
-              <th className="py-2">Status</th>
-              <th className="py-2">Expiry</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(credentials ?? []).map((credential) => (
-              <tr key={credential.id} className="border-t border-border">
-                <td className="py-2">{credentialTypeLabelById.get(credential.credential_type_id) ?? "—"}</td>
-                <td className="py-2">{credential.issuing_authority}</td>
-                <td className="py-2">{credential.status}</td>
-                <td className="py-2">{credential.expiry_date ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable<CredentialRow>
+          rows={credentials ?? []}
+          rowKey={(row) => row.id}
+          emptyMessage="No credentials logged yet."
+          columns={[
+            { key: "type", header: "Type", render: (row) => credentialTypeLabelById.get(row.credential_type_id) ?? "—" },
+            { key: "authority", header: "Issuing authority", render: (row) => row.issuing_authority },
+            { key: "status", header: "Status", render: (row) => row.status },
+            { key: "expiry", header: "Expiry", render: (row) => row.expiry_date ?? "—" },
+          ]}
+        />
 
         <form action={boundAddCredential} className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4">
           <label className="flex flex-col gap-1 text-sm text-muted-foreground">
@@ -260,24 +282,16 @@ export default async function ProviderDetailPage({
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <h2 className="text-lg font-medium">Identity verification</h2>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th className="py-2">Vendor</th>
-              <th className="py-2">Status</th>
-              <th className="py-2">Verified at</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(identityVerifications ?? []).map((iv) => (
-              <tr key={iv.id} className="border-t border-border">
-                <td className="py-2">{iv.vendor}</td>
-                <td className="py-2">{iv.status}</td>
-                <td className="py-2">{formatDate(iv.verified_at)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable<IdentityVerificationRow>
+          rows={identityVerifications ?? []}
+          rowKey={(row) => row.id}
+          emptyMessage="No identity verification logged yet."
+          columns={[
+            { key: "vendor", header: "Vendor", render: (row) => row.vendor },
+            { key: "status", header: "Status", render: (row) => row.status },
+            { key: "verified", header: "Verified at", render: (row) => formatDate(row.verified_at) },
+          ]}
+        />
         <form action={boundAddIdentity} className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4">
           <label className="flex flex-col gap-1 text-sm text-muted-foreground">
             Vendor
@@ -314,24 +328,16 @@ export default async function ProviderDetailPage({
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <h2 className="text-lg font-medium">Background checks</h2>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th className="py-2">Status</th>
-              <th className="py-2">Document ref</th>
-              <th className="py-2">Expires</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(backgroundChecks ?? []).map((check) => (
-              <tr key={check.id} className="border-t border-border">
-                <td className="py-2">{check.status}</td>
-                <td className="py-2">{check.document_ref}</td>
-                <td className="py-2">{formatDate(check.expires_at)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable<BackgroundCheckRow>
+          rows={backgroundChecks ?? []}
+          rowKey={(row) => row.id}
+          emptyMessage="No background checks logged yet."
+          columns={[
+            { key: "status", header: "Status", render: (row) => row.status },
+            { key: "document", header: "Document ref", render: (row) => row.document_ref },
+            { key: "expires", header: "Expires", render: (row) => formatDate(row.expires_at) },
+          ]}
+        />
         <form
           action={boundAddBackgroundCheck}
           className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4"
@@ -365,24 +371,16 @@ export default async function ProviderDetailPage({
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <h2 className="text-lg font-medium">Training records</h2>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th className="py-2">Title</th>
-              <th className="py-2">CPD points</th>
-              <th className="py-2">Completed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(trainingRecords ?? []).map((record) => (
-              <tr key={record.id} className="border-t border-border">
-                <td className="py-2">{record.title}</td>
-                <td className="py-2">{record.cpd_points}</td>
-                <td className="py-2">{formatDate(record.completed_at)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable<TrainingRecordRow>
+          rows={trainingRecords ?? []}
+          rowKey={(row) => row.id}
+          emptyMessage="No training records logged yet."
+          columns={[
+            { key: "title", header: "Title", render: (row) => row.title },
+            { key: "cpd", header: "CPD points", render: (row) => row.cpd_points },
+            { key: "completed", header: "Completed", render: (row) => formatDate(row.completed_at) },
+          ]}
+        />
         <form action={boundAddTraining} className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4">
           <label className="flex flex-col gap-1 text-sm text-muted-foreground">
             Title
@@ -401,6 +399,6 @@ export default async function ProviderDetailPage({
           </Button>
         </form>
       </section>
-    </main>
+    </AppShell>
   );
 }

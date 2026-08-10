@@ -41,5 +41,5 @@ export async function scheduleVisit(formData: FormData) {
     redirect(`/visits/new?error=${encodeURIComponent(visitError.message)}`);
   }
 
-  redirect("/?visitScheduled=1");
+  redirect("/visits/new?visitScheduled=1");
 }

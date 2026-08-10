@@ -1,13 +1,22 @@
+import { DataTable, PageHeader } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/app-shell";
 import { RosterForm } from "./roster-form";
+
+interface RosterRow {
+  id: string;
+  provider_id: string;
+  zone_id: string;
+  week_starting: string;
+}
 
 export default async function RosterPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; added?: string }>;
 }) {
-  await requireStaffUser();
+  const staffUser = await requireStaffUser();
   const { error, added } = await searchParams;
 
   const supabase = await createClient();
@@ -38,29 +47,22 @@ export default async function RosterPage({
   const zoneLabelById = new Map(zoneOptions.map((zone) => [zone.id, zone.label]));
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-6 p-24">
-      <h1 className="text-2xl font-semibold">Roster</h1>
-      {added ? <p className="text-sm text-emerald-700">Roster assignment added.</p> : null}
-      <RosterForm providers={providerOptions} zones={zoneOptions} error={error} />
+    <AppShell user={staffUser} toast={added ? { message: "Roster assignment added." } : undefined}>
+      <PageHeader title="Roster" />
+      <div className="flex w-full max-w-2xl flex-col gap-6">
+        <RosterForm providers={providerOptions} zones={zoneOptions} error={error} />
 
-      <table className="w-full max-w-2xl text-left text-sm">
-        <thead>
-          <tr className="text-muted-foreground">
-            <th className="py-2">Provider</th>
-            <th className="py-2">Zone</th>
-            <th className="py-2">Week starting</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(rosterRows ?? []).map((row) => (
-            <tr key={row.id} className="border-t border-border">
-              <td className="py-2">{providerLabelById.get(row.provider_id) ?? row.provider_id}</td>
-              <td className="py-2">{zoneLabelById.get(row.zone_id) ?? row.zone_id}</td>
-              <td className="py-2">{row.week_starting}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </main>
+        <DataTable<RosterRow>
+          rows={rosterRows ?? []}
+          rowKey={(row) => row.id}
+          emptyMessage="No roster assignments yet."
+          columns={[
+            { key: "provider", header: "Provider", render: (row) => providerLabelById.get(row.provider_id) ?? row.provider_id },
+            { key: "zone", header: "Zone", render: (row) => zoneLabelById.get(row.zone_id) ?? row.zone_id },
+            { key: "week", header: "Week starting", render: (row) => row.week_starting },
+          ]}
+        />
+      </div>
+    </AppShell>
   );
 }

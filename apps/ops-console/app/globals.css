@@ -2,13 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens from the ops-console UX review (docs/user-guide/ux-refresh/carebridge-ops-ux-review.md),
+   "Design tokens" table — hex converted to HSL. "Calm clinical operations": cool neutral canvas,
+   white working surfaces, deep teal brand, semantic red/amber/green/blue reserved for state. */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
+  --background: 180 1% 96%; /* Canvas #F4F7F7 */
+  --surface: 0 0% 100%; /* Surface #FFFFFF — working panels/cards, distinct from canvas */
+  --foreground: 194 41% 13%; /* Ink 950 #13272D */
+  --primary: 186 71% 25%; /* Brand 700 #12636C */
   --primary-foreground: 0 0% 100%;
-  --border: 214 32% 91%;
+  --brand-800: 187 73% 19%; /* Brand 800 #0D4C54 — nav shell / strong brand actions */
+  --border: 191 6% 88%; /* Border #DBE4E6 */
   --muted: 210 40% 96%;
   --muted-foreground: 215 16% 47%;
+  --critical: 358 59% 41%; /* Critical 700 #A52B2F */
+  --critical-foreground: 0 0% 100%;
+  --warning: 38 88% 29%; /* Warning 700 #8B5C09 */
+  --warning-foreground: 0 0% 100%;
+  --success: 145 46% 27%; /* Success 700 #25633F */
+  --success-foreground: 0 0% 100%;
+  --information: 208 55% 35%; /* Information 700 #285C8A */
+  --information-foreground: 0 0% 100%;
   --radius: 0.5rem;
 }

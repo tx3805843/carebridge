@@ -26,7 +26,7 @@ export default async function LoginPage({
           required
           className="rounded-md border border-border px-3 py-2"
         />
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-critical">{error}</p> : null}
         <Button type="submit">Sign in</Button>
       </form>
     </main>

@@ -63,7 +63,7 @@ export function VisitForm({
           className="rounded-md border border-border px-3 py-2"
         />
       </label>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-critical">{error}</p> : null}
       <Button type="submit">Schedule visit</Button>
     </form>
   );
