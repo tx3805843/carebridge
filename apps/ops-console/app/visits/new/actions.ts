@@ -15,9 +15,17 @@ export async function scheduleVisit(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { data: client } = await supabase.from("client").select("status").eq("id", clientId).maybeSingle();
+  const { data: client, error: clientError } = await supabase
+    .from("client")
+    .select("status")
+    .eq("id", clientId)
+    .maybeSingle();
 
-  if (client?.status !== "active") {
+  if (clientError || !client) {
+    redirect(`/visits/new?error=${encodeURIComponent("Client not found.")}`);
+  }
+
+  if (client.status !== "active") {
     redirect(
       `/visits/new?error=${encodeURIComponent("This client is not active — reactivate them before scheduling a visit.")}`,
     );
