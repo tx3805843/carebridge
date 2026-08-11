@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getBlockedReasons, getCurrentZoneId, type ProviderEligibilityProfile } from "@/lib/provider-eligibility";
 
 export async function scheduleVisit(formData: FormData) {
   const clientId = String(formData.get("clientId") ?? "");
@@ -17,7 +18,7 @@ export async function scheduleVisit(formData: FormData) {
 
   const { data: client, error: clientError } = await supabase
     .from("client")
-    .select("status")
+    .select("status, zone_id")
     .eq("id", clientId)
     .maybeSingle();
 
@@ -28,6 +29,48 @@ export async function scheduleVisit(formData: FormData) {
   if (client.status !== "active") {
     redirect(
       `/visits/new?error=${encodeURIComponent("This client is not active — reactivate them before scheduling a visit.")}`,
+    );
+  }
+
+  const { data: provider, error: providerError } = await supabase
+    .from("provider")
+    .select("id, user_id, employment_status")
+    .eq("id", providerId)
+    .maybeSingle();
+
+  if (providerError || !provider) {
+    redirect(`/visits/new?error=${encodeURIComponent("Provider not found.")}`);
+  }
+
+  const [{ data: providerUser }, { data: nurseRole }, { data: verifiedProfile }, { data: rosterRows }, { data: zones }] =
+    await Promise.all([
+      supabase.from("user").select("role_id").eq("id", provider.user_id).maybeSingle(),
+      supabase.from("role").select("id").eq("slug", "nurse").single(),
+      supabase.from("verified_profile").select("nmc_licensed").eq("provider_id", providerId).maybeSingle(),
+      supabase.from("roster").select("zone_id, week_starting").eq("provider_id", providerId),
+      supabase.from("zone").select("id, name"),
+    ]);
+
+  const zoneNameById = new Map((zones ?? []).map((zone) => [zone.id, zone.name]));
+  const currentZoneId = getCurrentZoneId(
+    providerId,
+    (rosterRows ?? []).map((row) => ({ providerId, zoneId: row.zone_id, weekStarting: row.week_starting })),
+  );
+  const currentZoneName = currentZoneId ? zoneNameById.get(currentZoneId) : undefined;
+
+  const profile: ProviderEligibilityProfile = {
+    providerId,
+    isNurse: providerUser?.role_id === nurseRole?.id,
+    employmentStatus: provider.employment_status,
+    nmcLicensed: verifiedProfile?.nmc_licensed ?? false,
+    currentZone: currentZoneId && currentZoneName ? { id: currentZoneId, name: currentZoneName } : null,
+  };
+
+  const blockedReasons = getBlockedReasons(profile, client.zone_id);
+
+  if (blockedReasons.length > 0) {
+    redirect(
+      `/visits/new?error=${encodeURIComponent(`This provider isn't eligible for this client: ${blockedReasons.join("; ")}`)}`,
     );
   }
 
