@@ -28,15 +28,5 @@ export async function onboardProvider(formData: FormData) {
     redirect(`/providers/new?error=${encodeURIComponent(providerError?.message ?? "Failed to create provider.")}`);
   }
 
-  const { error: verifiedProfileError } = await supabase.from("verified_profile").insert({
-    provider_id: provider.id,
-  });
-
-  if (verifiedProfileError) {
-    redirect(
-      `/providers/new?error=${encodeURIComponent(`Provider was created (id ${provider.id}) but the verified-profile row failed to save: ${verifiedProfileError.message}. Add it manually.`)}`,
-    );
-  }
-
   redirect(`/providers/${provider.id}?onboarded=1`);
 }
