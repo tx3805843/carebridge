@@ -9,17 +9,11 @@ import {
   CRITICAL_RESOLVER_ROLE_SLUGS,
   OUTCOME_CATEGORIES,
   OUTCOME_CATEGORY_LABEL,
+  SEVERITY_BADGE_VARIANT,
   SEVERITY_LABEL,
   SEVERITY_RANK,
 } from "./constants";
 import { buildEscalationTimeline, formatResponseTarget } from "./utils";
-
-const SEVERITY_BADGE_VARIANT: Record<string, "critical" | "warning" | "information" | "neutral"> = {
-  critical: "critical",
-  high: "warning",
-  medium: "information",
-  low: "neutral",
-};
 
 const STATUS_BADGE_VARIANT: Record<string, "warning" | "information" | "success"> = {
   open: "warning",

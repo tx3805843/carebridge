@@ -40,3 +40,10 @@ export const SEVERITY_LABEL: Record<string, string> = {
   medium: "Medium",
   low: "Low",
 };
+
+export const SEVERITY_BADGE_VARIANT: Record<string, "critical" | "warning" | "information" | "neutral"> = {
+  critical: "critical",
+  high: "warning",
+  medium: "information",
+  low: "neutral",
+};
