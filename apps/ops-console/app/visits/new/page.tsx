@@ -15,15 +15,28 @@ export default async function NewVisitPage({
 
   const supabase = await createClient();
 
-  const [{ data: clients }, { data: providers }, { data: roles }, { data: verifiedProfiles }, { data: rosterRows }, { data: zones }] =
-    await Promise.all([
-      supabase.from("client").select("id, full_name, zone_id").order("full_name"),
-      supabase.from("provider").select("id, user_id, employment_status"),
-      supabase.from("role").select("id, slug"),
-      supabase.from("verified_profile").select("provider_id, nmc_licensed"),
-      supabase.from("roster").select("provider_id, zone_id, week_starting"),
-      supabase.from("zone").select("id, name"),
-    ]);
+  const [
+    { data: clients },
+    { data: providers },
+    { data: roles },
+    { data: verifiedProfiles },
+    { data: rosterRows },
+    { data: zones },
+    { data: carePlans },
+    { data: existingVisits },
+  ] = await Promise.all([
+    supabase.from("client").select("id, full_name, zone_id").order("full_name"),
+    supabase.from("provider").select("id, user_id, employment_status"),
+    supabase.from("role").select("id, slug"),
+    supabase.from("verified_profile").select("provider_id, nmc_licensed"),
+    supabase.from("roster").select("provider_id, zone_id, week_starting"),
+    supabase.from("zone").select("id, name"),
+    supabase.from("care_plan").select("client_id, summary, effective_from"),
+    supabase
+      .from("visit")
+      .select("provider_id, client_id, scheduled_start, scheduled_end")
+      .in("status", ["scheduled", "en_route", "in_progress"]),
+  ]);
 
   const providerUserIds = (providers ?? []).map((provider) => provider.user_id);
   const { data: providerUsers } =
@@ -35,6 +48,7 @@ export default async function NewVisitPage({
   const roleSlugById = new Map((roles ?? []).map((role) => [role.id, role.slug]));
   const nmcLicensedByProviderId = new Map((verifiedProfiles ?? []).map((vp) => [vp.provider_id, vp.nmc_licensed]));
   const zoneNameById = new Map((zones ?? []).map((zone) => [zone.id, zone.name]));
+  const clientLabelById = new Map((clients ?? []).map((client) => [client.id, client.full_name]));
 
   const rosterAssignments = (rosterRows ?? []).map((row) => ({
     providerId: row.provider_id,
@@ -83,11 +97,45 @@ export default async function NewVisitPage({
     matrix[client.id] = { eligible, blocked };
   }
 
+  const zoneNameByClientId: Record<string, string> = {};
+  for (const client of clients ?? []) {
+    zoneNameByClientId[client.id] = zoneNameById.get(client.zone_id) ?? "No zone";
+  }
+
+  const careplanByClientId: Record<string, { effectiveFrom: string; summary: string } | null> = {};
+  for (const client of clients ?? []) {
+    careplanByClientId[client.id] = null;
+  }
+  for (const carePlan of carePlans ?? []) {
+    const current = careplanByClientId[carePlan.client_id];
+    if (!current || carePlan.effective_from > current.effectiveFrom) {
+      careplanByClientId[carePlan.client_id] = { effectiveFrom: carePlan.effective_from, summary: carePlan.summary };
+    }
+  }
+
+  const visitsByProviderId: Record<string, { clientLabel: string; scheduledStart: string; scheduledEnd: string }[]> =
+    {};
+  for (const visit of existingVisits ?? []) {
+    const entry = {
+      clientLabel: clientLabelById.get(visit.client_id) ?? "Unknown client",
+      scheduledStart: visit.scheduled_start,
+      scheduledEnd: visit.scheduled_end,
+    };
+    (visitsByProviderId[visit.provider_id] ??= []).push(entry);
+  }
+
   return (
     <AppShell user={staffUser}>
       <PageHeader title="Schedule a visit" />
       {visitScheduled ? <p className="mb-4 text-sm text-success">Visit scheduled.</p> : null}
-      <VisitForm clients={clientOptions} matrix={matrix} error={error} />
+      <VisitForm
+        clients={clientOptions}
+        matrix={matrix}
+        zoneNameByClientId={zoneNameByClientId}
+        careplanByClientId={careplanByClientId}
+        visitsByProviderId={visitsByProviderId}
+        error={error}
+      />
     </AppShell>
   );
 }
