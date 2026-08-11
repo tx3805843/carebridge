@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { getBlockedReasons, getCurrentZoneId, type ProviderEligibilityProfile } from "@/lib/provider-eligibility";
 import {
+  EXPIRY_WARNING_DAYS,
   getProviderVerificationBadges,
   type ProviderVerificationBadges,
   type VerificationState,
@@ -149,7 +150,7 @@ export default async function ProvidersPage({
   }));
 
   const todayIso = new Date().toISOString().slice(0, 10);
-  const warningCutoffIso = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const warningCutoffIso = new Date(Date.now() + EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const providerRows: ProviderRow[] = (providers ?? []).map((provider) => {
     const user = userById.get(provider.user_id);
@@ -188,6 +189,10 @@ export default async function ProvidersPage({
       currentZone: currentZoneId && currentZoneName ? { id: currentZoneId, name: currentZoneName } : null,
     };
 
+    // Pass the provider's own current zone as the target: this trivially satisfies the
+    // zone-match check (a provider is always in its own zone), so only the "not yet
+    // rostered to any zone" reason can still fire here — there's no specific client on
+    // this page to compare a real zone mismatch against.
     const blockedReasons = getBlockedReasons(profile, profile.currentZone?.id ?? "");
 
     return {
@@ -230,6 +235,7 @@ export default async function ProvidersPage({
             name="q"
             defaultValue={q}
             placeholder="Search by name"
+            aria-label="Search providers by name"
             className="rounded-md border border-border px-3 py-2 text-sm"
           />
           <Button type="submit" size="sm" variant="outline">
@@ -302,7 +308,10 @@ export default async function ProvidersPage({
             header: "Scheduling",
             render: (row) =>
               row.blockedReasons.length > 0 ? (
-                <StatusBadge variant="critical" label="Blocked" title={row.blockedReasons.join("; ")} />
+                <span title={row.blockedReasons.join("; ")}>
+                  <StatusBadge variant="critical" label="Blocked" />
+                  <span className="sr-only">: {row.blockedReasons.join("; ")}</span>
+                </span>
               ) : null,
           },
         ]}
