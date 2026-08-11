@@ -4,7 +4,7 @@ import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
-import { getProviderVerificationBadges, type VerificationState } from "@/lib/provider-verification-status";
+import { EXPIRY_WARNING_DAYS, getProviderVerificationBadges, type VerificationState } from "@/lib/provider-verification-status";
 import {
   addBackgroundCheck,
   addCredential,
@@ -60,10 +60,9 @@ interface VerificationOverrideRow {
   revoked_at: string | null;
 }
 
-// Duplicated from actions.ts's own copy (used there for server-side validation, here for the
-// <select> options) — matches this file's existing VERIFICATION_STATUSES precedent, already
-// independently declared in both actions.ts and page.tsx.
-const OVERRIDE_SIGNALS = ["id_verified", "nmc_licensed", "background_checked", "training_current"];
+// Derived from OVERRIDE_SIGNAL_LABEL (imported from ./actions) so the dropdown can never drift
+// from the DB-enforced whitelist.
+const OVERRIDE_SIGNALS = Object.keys(OVERRIDE_SIGNAL_LABEL);
 
 // Matches D1's own VERIFICATION_BADGE map in apps/ops-console/app/providers/page.tsx —
 // duplicated here rather than shared, same small-array-duplication precedent already
@@ -114,6 +113,7 @@ export default async function ProviderDetailPage({
     { data: backgroundChecks },
     { data: trainingRecords },
     { data: roles },
+    { data: overrides },
   ] = await Promise.all([
     supabase.from("user").select("full_name, email, phone, role_id").eq("id", provider.user_id).maybeSingle(),
     supabase
@@ -138,6 +138,11 @@ export default async function ProviderDetailPage({
       .eq("provider_id", provider.id)
       .order("completed_at", { ascending: false }),
     supabase.from("role").select("id, slug"),
+    supabase
+      .from("verification_override")
+      .select("id, signal, override_value, reason, effective_from, effective_until, revoked_at")
+      .eq("provider_id", provider.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const credentialTypeLabelById = new Map((credentialTypes ?? []).map((type) => [type.id, type.label]));
@@ -149,7 +154,7 @@ export default async function ProviderDetailPage({
   const nmcCredentials = (credentials ?? []).filter((c) => credentialTypeSlugById.get(c.credential_type_id) === "nmc_pin_ain");
 
   const todayIso = new Date().toISOString().slice(0, 10);
-  const warningCutoffIso = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const warningCutoffIso = new Date(Date.now() + EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const verificationBadges = getProviderVerificationBadges({
     isNurse,
@@ -160,12 +165,6 @@ export default async function ProviderDetailPage({
     todayIso,
     warningCutoffIso,
   });
-
-  const { data: overrides } = await supabase
-    .from("verification_override")
-    .select("id, signal, override_value, reason, effective_from, effective_until, revoked_at")
-    .eq("provider_id", provider.id)
-    .order("created_at", { ascending: false });
 
   const isApprover = staffUser.roleSlug === "clinical_director" || staffUser.roleSlug === "admin";
 

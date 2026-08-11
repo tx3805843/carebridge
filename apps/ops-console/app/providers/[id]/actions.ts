@@ -170,14 +170,14 @@ export async function updateEmploymentStatus(providerId: string, formData: FormD
 // same bar for a credentialing-eligibility override as for resolving a critical escalation.
 const OVERRIDE_APPROVER_ROLE_SLUGS = ["clinical_director", "admin"];
 
-const OVERRIDE_SIGNALS = ["id_verified", "nmc_licensed", "background_checked", "training_current"];
-
 export const OVERRIDE_SIGNAL_LABEL: Record<string, string> = {
   id_verified: "ID verification",
   nmc_licensed: "NMC PIN/AIN",
   background_checked: "Background check",
   training_current: "Training",
 };
+
+const OVERRIDE_SIGNALS = Object.keys(OVERRIDE_SIGNAL_LABEL);
 
 // Defense-in-depth, matching apps/ops-console/app/exceptions/actions.ts#resolveEscalation's
 // own posture: verification_override's RLS (internal.is_credentialing_approver()) is the
@@ -220,7 +220,7 @@ export async function createVerificationOverride(providerId: string, formData: F
     signal,
     override_value: overrideValue === "true",
     reason,
-    effective_until: effectiveUntil,
+    effective_until: `${effectiveUntil}T23:59:59Z`,
   });
 
   if (error) {
