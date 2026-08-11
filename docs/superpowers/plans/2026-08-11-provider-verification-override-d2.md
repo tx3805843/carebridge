@@ -1454,6 +1454,22 @@ Task 9 until both pass.
 
 ---
 
+### Amendment (found during Task 9's own browser verification)
+
+`actions.ts` has `"use server";` at the top — Next.js requires every export from a
+`"use server"` file to be an async function; a plain `export const OVERRIDE_SIGNAL_LABEL:
+Record<string, string> = {...}` (added in Task 6) makes the entire route 500 on every
+request, for every user, the instant the module is evaluated. Neither typecheck nor lint
+catches this — it's a Next.js RSC-loader rule, not a TypeScript/ESLint one — so it went
+undetected through Tasks 6-8 and was only caught here, the first point anything actually
+loaded the page in a browser. Fixed by moving `OVERRIDE_SIGNAL_LABEL` (and the derived
+`OVERRIDE_SIGNALS`) into a new plain module, `apps/ops-console/app/providers/[id]/constants.ts`
+— matching this codebase's own established precedent for the identical problem
+(`apps/ops-console/app/exceptions/constants.ts` sits next to `exceptions/actions.ts` for
+exactly this reason). `actions.ts` keeps only its async server actions; both `actions.ts`
+(for validation) and `page.tsx` (for display) import the signal data from `constants.ts`
+instead.
+
 ### Task 9: Verify end-to-end in the browser against real local Postgres
 
 **Files:** none (verification only)
