@@ -108,7 +108,6 @@ export default async function ProviderDetailPage({
 
   const [
     { data: user },
-    { data: verifiedProfile },
     { data: credentials },
     { data: credentialTypes },
     { data: identityVerifications },
@@ -117,7 +116,6 @@ export default async function ProviderDetailPage({
     { data: roles },
   ] = await Promise.all([
     supabase.from("user").select("full_name, email, phone, role_id").eq("id", provider.user_id).maybeSingle(),
-    supabase.from("verified_profile").select("*").eq("provider_id", provider.id).maybeSingle(),
     supabase
       .from("credential")
       .select("id, credential_type_id, issuing_authority, status, expiry_date, created_at")
