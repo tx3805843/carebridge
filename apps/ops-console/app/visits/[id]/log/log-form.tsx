@@ -6,6 +6,12 @@ import { RESPONSE_TARGET_MINUTES, SEVERITY_BADGE_VARIANT, SEVERITY_LABEL } from 
 
 const CONCERN_SEVERITIES = ["high", "medium", "low"] as const;
 
+// The "No" branch and the "Yes" branch's concern fieldset both use the field names
+// `escalationReason` / `escalationSeverity`, relying on `clientSafe === "no"` and
+// `clientSafe === "yes"` being mutually exclusive so only one fieldset is ever mounted at a
+// time. If a future change ever rendered both simultaneously, these names would collide in
+// FormData and need to be disambiguated (e.g. distinct field names per branch).
+
 // "15 min" / "1h" / "4h" / "1d" — a short, readable form of the response-target policy for
 // inline guidance next to a severity choice. Distinct from exceptions/utils.ts's
 // formatResponseTarget, which computes a live countdown from a stored created_at; this is a
@@ -48,6 +54,7 @@ export function LogVisitForm({
           <Button
             type="button"
             variant={clientSafe === "yes" ? "default" : "outline"}
+            aria-pressed={clientSafe === "yes"}
             onClick={() => setClientSafe("yes")}
           >
             Yes, client is safe
@@ -55,6 +62,7 @@ export function LogVisitForm({
           <Button
             type="button"
             variant={clientSafe === "no" ? "destructive" : "outline"}
+            aria-pressed={clientSafe === "no"}
             onClick={() => {
               setClientSafe("no");
               setConcernFlagged(false);
@@ -70,10 +78,10 @@ export function LogVisitForm({
         <fieldset className="flex flex-col gap-3 rounded-md border border-critical/30 bg-critical/5 p-4">
           <legend className="flex items-center gap-2 text-lg font-medium">
             Escalation
-            <StatusBadge variant={SEVERITY_BADGE_VARIANT.critical!} label={SEVERITY_LABEL.critical!} />
+            <StatusBadge variant={SEVERITY_BADGE_VARIANT.critical} label={SEVERITY_LABEL.critical ?? "Critical"} />
           </legend>
           <p className="text-sm text-muted-foreground">
-            Response target: {formatTargetDuration(RESPONSE_TARGET_MINUTES.critical!)}. This notifies the
+            Response target: {formatTargetDuration(RESPONSE_TARGET_MINUTES.critical ?? 15)}. This notifies the
             coordinator and clinical director immediately.
           </p>
           <textarea
@@ -153,14 +161,15 @@ export function LogVisitForm({
                 </option>
                 {CONCERN_SEVERITIES.map((severity) => (
                   <option key={severity} value={severity}>
-                    {SEVERITY_LABEL[severity]!} — response target {formatTargetDuration(RESPONSE_TARGET_MINUTES[severity]!)}
+                    {SEVERITY_LABEL[severity] ?? severity} — response target{" "}
+                    {formatTargetDuration(RESPONSE_TARGET_MINUTES[severity] ?? 0)}
                   </option>
                 ))}
               </select>
               {concernSeverity ? (
                 <StatusBadge
-                  variant={SEVERITY_BADGE_VARIANT[concernSeverity]!}
-                  label={SEVERITY_LABEL[concernSeverity]!}
+                  variant={SEVERITY_BADGE_VARIANT[concernSeverity]}
+                  label={SEVERITY_LABEL[concernSeverity] ?? concernSeverity}
                 />
               ) : null}
               <textarea
