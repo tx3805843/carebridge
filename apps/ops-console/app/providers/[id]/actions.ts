@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireStaffUser } from "@/lib/auth";
 
 const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "expired", "rejected"];
 
@@ -165,22 +166,89 @@ export async function updateEmploymentStatus(providerId: string, formData: FormD
   redirect(`/providers/${providerId}?updated=employment status`);
 }
 
-export async function updateVerifiedProfile(providerId: string, formData: FormData) {
+// Matches CRITICAL_RESOLVER_ROLE_SLUGS in apps/ops-console/app/exceptions/constants.ts —
+// same bar for a credentialing-eligibility override as for resolving a critical escalation.
+const OVERRIDE_APPROVER_ROLE_SLUGS = ["clinical_director", "admin"];
+
+const OVERRIDE_SIGNALS = ["id_verified", "nmc_licensed", "background_checked", "training_current"];
+
+export const OVERRIDE_SIGNAL_LABEL: Record<string, string> = {
+  id_verified: "ID verification",
+  nmc_licensed: "NMC PIN/AIN",
+  background_checked: "Background check",
+  training_current: "Training",
+};
+
+// Defense-in-depth, matching apps/ops-console/app/exceptions/actions.ts#resolveEscalation's
+// own posture: verification_override's RLS (internal.is_credentialing_approver()) is the
+// real gate — this check exists so a non-approver gets a specific, friendly error instead of
+// an opaque RLS failure.
+export async function createVerificationOverride(providerId: string, formData: FormData) {
+  const staffUser = await requireStaffUser();
+
+  if (!OVERRIDE_APPROVER_ROLE_SLUGS.includes(staffUser.roleSlug)) {
+    redirect(
+      `/providers/${providerId}?error=${encodeURIComponent("Only the Clinical Director or an admin can create a verification override.")}`,
+    );
+  }
+
+  const signal = String(formData.get("signal") ?? "");
+  const overrideValue = String(formData.get("overrideValue") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const effectiveUntil = String(formData.get("effectiveUntil") ?? "");
+
+  if (!OVERRIDE_SIGNALS.includes(signal)) {
+    redirect(`/providers/${providerId}?error=${encodeURIComponent("A valid signal is required.")}`);
+  }
+
+  if (overrideValue !== "true" && overrideValue !== "false") {
+    redirect(`/providers/${providerId}?error=${encodeURIComponent("A value is required.")}`);
+  }
+
+  if (!reason) {
+    redirect(`/providers/${providerId}?error=${encodeURIComponent("A reason is required.")}`);
+  }
+
+  if (!effectiveUntil) {
+    redirect(`/providers/${providerId}?error=${encodeURIComponent("An effective-until date is required.")}`);
+  }
+
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("verified_profile")
-    .update({
-      id_verified: formData.get("idVerified") === "on",
-      nmc_licensed: formData.get("nmcLicensed") === "on",
-      background_checked: formData.get("backgroundChecked") === "on",
-      training_current: formData.get("trainingCurrent") === "on",
-    })
-    .eq("provider_id", providerId);
+  const { error } = await supabase.from("verification_override").insert({
+    provider_id: providerId,
+    signal,
+    override_value: overrideValue === "true",
+    reason,
+    effective_until: effectiveUntil,
+  });
 
   if (error) {
     redirect(`/providers/${providerId}?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect(`/providers/${providerId}?updated=profile`);
+  redirect(`/providers/${providerId}?added=override`);
+}
+
+export async function revokeVerificationOverride(providerId: string, overrideId: string, formData: FormData) {
+  const staffUser = await requireStaffUser();
+
+  if (!OVERRIDE_APPROVER_ROLE_SLUGS.includes(staffUser.roleSlug)) {
+    redirect(
+      `/providers/${providerId}?error=${encodeURIComponent("Only the Clinical Director or an admin can revoke a verification override.")}`,
+    );
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("verification_override")
+    .update({ revoked_at: new Date().toISOString(), revoked_by: staffUser.id })
+    .eq("id", overrideId);
+
+  if (error) {
+    redirect(`/providers/${providerId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/providers/${providerId}?updated=override`);
 }
