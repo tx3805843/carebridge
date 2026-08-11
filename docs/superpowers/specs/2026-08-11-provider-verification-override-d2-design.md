@@ -314,6 +314,35 @@ failure/success).
 - Fixing D1's separately-logged follow-up about the Blocked badge's own on-page explanation —
   tracked independently in the roadmap, not folded into this increment's scope.
 
+## Amendment (found during implementation review)
+
+An independent database-correctness review of the first-draft migration (built from this
+doc's illustrative SQL) caught four real defects, all fixed in the implementation plan's
+final SQL — noted here since this doc's snippets above are now stale on these points:
+
+- **Blocker**: `verified_profile.created_by` is `not null default auth.uid()`, but
+  `auth.uid()` is null in every context that actually calls the recompute function (a raw
+  migration session, the pg_cron sweep, `credential-expiry-cron`'s service-role calls) —
+  `ON CONFLICT DO UPDATE`'s speculative insert evaluates NOT NULL against the full candidate
+  row regardless of outcome, so this would have failed on the migration's own backfill call.
+  Fixed by dropping NOT NULL on that column (matching `audit_log`/`credential_type`'s
+  existing precedent for the identical reason).
+- `id_verified`/`background_checked` were computed via `EXISTS (... status = 'verified' ...)`
+  across *all* rows ever, not the latest one — since this app inserts a new evidence row on
+  every re-check rather than updating in place, a single old verified row could keep a signal
+  true forever even after a newer row disputes it. Fixed to match
+  `provider-verification-status.ts`'s `latestByCreatedAt` exactly (latest-row-wins) for all
+  three status-bearing signals, not just NMC.
+- The override `UPDATE` RLS policy permitted a full-row rewrite (an approver could silently
+  change `override_value`/`effective_until`/`reason` in place instead of revoking), and
+  nothing enforced `effective_until` being in the future at creation time (only that the
+  window was non-empty). Both fixed with two small `BEFORE` triggers (revoke-only column
+  guard on `UPDATE`, future-date guard on `INSERT` — deliberately not a table `CHECK`, which
+  would re-validate on every later revoke too).
+
+See `docs/superpowers/plans/2026-08-11-provider-verification-override-d2.md` Task 1 for the
+corrected, authoritative SQL.
+
 ## Verification plan
 
 Same bar as every prior increment — real local Postgres, not just typechecked:

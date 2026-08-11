@@ -92,6 +92,61 @@ create trigger verification_override_set_updated_at
   before update on verification_override
   for each row execute function public.set_updated_at();
 
+-- ── Integrity triggers: mandatory-future-at-creation, revoke-only after creation ───────
+-- Two separate triggers, deliberately: the future-date rule only makes sense at INSERT time
+-- (a CHECK constraint using now() would re-validate on every UPDATE too, which would then
+-- reject the legitimate revoke of an override whose effective_until has since passed — a
+-- normal, expected case). The revoke-only rule only makes sense at UPDATE time.
+
+create function internal.enforce_verification_override_future_effective_until()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if new.effective_until <= now() then
+    raise exception 'verification_override.effective_until must be in the future at creation time (got %)', new.effective_until;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger verification_override_enforce_future_effective_until
+  before insert on verification_override
+  for each row execute function internal.enforce_verification_override_future_effective_until();
+
+-- Without this, verification_override_update_approver's RLS (below) would let any approver
+-- rewrite an existing override's override_value/effective_until/reason in place via a plain
+-- UPDATE — silently changing a governance decision rather than revoking it and creating a
+-- new one, undermining the audit trail this table exists to provide.
+
+create function internal.enforce_verification_override_revoke_only()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if new.provider_id is distinct from old.provider_id
+    or new.signal is distinct from old.signal
+    or new.override_value is distinct from old.override_value
+    or new.reason is distinct from old.reason
+    or new.effective_from is distinct from old.effective_from
+    or new.effective_until is distinct from old.effective_until
+    or new.created_by is distinct from old.created_by
+    or new.created_at is distinct from old.created_at
+  then
+    raise exception 'verification_override rows can only be revoked (revoked_at/revoked_by), not otherwise modified';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger verification_override_enforce_revoke_only
+  before update on verification_override
+  for each row execute function internal.enforce_verification_override_revoke_only();
+
 -- ── internal.is_credentialing_approver() ────────────────────────────────────────────────
 -- Stricter subset of internal.is_staff() (coordinator/clinical_director/admin) — matches
 -- this codebase's existing precedent for safety/credentialing-adjacent actions
@@ -128,14 +183,34 @@ create policy verification_override_update_approver on verification_override
   using (internal.is_credentialing_approver())
   with check (internal.is_credentialing_approver());
 
--- No delete policy — RLS default-denies delete for every role. Overrides are corrected by
--- revoking (an update setting revoked_at/revoked_by), never erased, matching this codebase's
--- append-only-audit-trail spirit even though this isn't audit_log itself.
+-- No delete POLICY — RLS default-denies delete for the `authenticated` role (no permissive
+-- policy matches). Overrides are corrected by revoking (an update setting
+-- revoked_at/revoked_by, enforced revoke-only by the trigger above), never erased through the
+-- app. This guarantee is scoped to RLS-governed `authenticated` access: `service_role` has
+-- BYPASSRLS and is still granted DELETE below (matching every other table's uniform grant in
+-- this schema) — that's the trusted backend key, never exposed to end users, not a gap in the
+-- app-facing guarantee.
 
 create trigger verification_override_audit after insert or update or delete on verification_override for each row execute function internal.audit_row_change();
 
 grant select, insert, update, delete on verification_override to authenticated;
 grant select, insert, update, delete on verification_override to service_role;
+
+-- ── verified_profile.created_by: drop NOT NULL ──────────────────────────────────────────
+-- verified_profile is now exclusively system-computed (see recompute function below) — no
+-- write ever originates from a specific staff action anymore, so created_by can never be
+-- populated by auth.uid(). auth.uid() reads request.jwt.claim.sub, which is null in every
+-- context that actually calls the recompute function: a raw migration/psql session (this
+-- migration's own backfill call below), the pg_cron sweep, and credential-expiry-cron's
+-- service-role-authenticated update (no JWT sub claim at all). Postgres evaluates NOT NULL
+-- against the full candidate row during `ON CONFLICT DO UPDATE`'s speculative insert
+-- regardless of which branch is ultimately taken, so a NOT NULL created_by with only a
+-- `default auth.uid()` would fail this statement every time — including its own first
+-- backfill call. Matches the existing precedent of audit_log/credential_type's created_by
+-- already being nullable for the identical reason ("a system-driven change has no
+-- auth.uid()", 20260809173000).
+
+alter table verified_profile alter column created_by drop not null;
 
 -- ── internal.recompute_verified_profile(uuid) ───────────────────────────────────────────
 -- The single authoritative computation of all four verified_profile booleans. Ported from
@@ -166,32 +241,41 @@ begin
   join "role" r on r.id = u.role_id
   where p.id = target_provider_id;
 
-  select exists (
-    select 1 from identity_verification
-    where provider_id = target_provider_id and status = 'verified'
-  ) into v_id_verified;
+  -- Latest-row-wins for every signal with a status field, matching
+  -- apps/ops-console/lib/provider-verification-status.ts's latestByCreatedAt exactly — a
+  -- newer non-verified row (e.g. a failed re-check) must override an older verified one,
+  -- since identity_verification/background_check/credential rows are inserted, never updated
+  -- in place, by this app's own server actions (an EXISTS-across-all-rows check would let a
+  -- single old verified row keep a signal true forever, even after a newer row disputes it).
+  select coalesce((
+    select status = 'verified'
+    from identity_verification
+    where provider_id = target_provider_id
+    order by created_at desc
+    limit 1
+  ), false) into v_id_verified;
 
   -- Non-nurses default to true here (never gates anything — getBlockedReasons in
   -- provider-eligibility.ts only ever checks nmcLicensed when isNurse is true — this matches
   -- the pre-D2 cron's own behavior of never touching caregivers' nmc_licensed). This is NOT
   -- D1's UI "not_applicable" display state — the stored boolean has no third state and
   -- doesn't need one.
-  select coalesce(v_is_nurse, false) = false or exists (
-    select 1
+  select coalesce(v_is_nurse, false) = false or coalesce((
+    select c.status = 'verified' and (c.expiry_date is null or c.expiry_date >= current_date)
     from credential c
     join credential_type ct on ct.id = c.credential_type_id
-    where c.provider_id = target_provider_id
-      and ct.slug = 'nmc_pin_ain'
-      and c.status = 'verified'
-      and (c.expiry_date is null or c.expiry_date >= current_date)
-  ) into v_nmc_licensed;
+    where c.provider_id = target_provider_id and ct.slug = 'nmc_pin_ain'
+    order by c.created_at desc
+    limit 1
+  ), false) into v_nmc_licensed;
 
-  select exists (
-    select 1 from background_check
+  select coalesce((
+    select status = 'verified' and (expires_at is null or expires_at >= now())
+    from background_check
     where provider_id = target_provider_id
-      and status = 'verified'
-      and (expires_at is null or expires_at >= now())
-  ) into v_background_checked;
+    order by created_at desc
+    limit 1
+  ), false) into v_background_checked;
 
   select exists (
     select 1 from training_record where provider_id = target_provider_id
@@ -220,6 +304,9 @@ begin
     end if;
   end loop;
 
+  -- created_by is deliberately omitted from both the column list and the update SET clause —
+  -- it stays null (see the ALTER above), since this row is always system-computed, never a
+  -- specific staff action.
   insert into verified_profile (provider_id, id_verified, nmc_licensed, background_checked, training_current)
   values (target_provider_id, v_id_verified, v_nmc_licensed, v_background_checked, v_training_current)
   on conflict (provider_id) do update set
