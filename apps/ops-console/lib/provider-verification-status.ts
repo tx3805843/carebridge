@@ -11,8 +11,13 @@ export type VerificationState = "verified" | "missing" | "not_applicable" | "exp
 // cron runs in a separate Deno edge function, not this Next.js app.
 export const EXPIRY_WARNING_DAYS = 30;
 
+// Accepts either a plain YYYY-MM-DD date string or a full timestamptz ISO string (e.g. from
+// a `timestamptz` column) and normalizes to the first 10 chars internally, so callers never
+// need to pre-slice before comparing against todayIso/warningCutoffIso (both always 10-char
+// date strings).
 function isWithinWarningWindow(dateIso: string, todayIso: string, warningCutoffIso: string): boolean {
-  return dateIso >= todayIso && dateIso <= warningCutoffIso;
+  const dateOnly = dateIso.slice(0, 10);
+  return dateOnly >= todayIso && dateOnly <= warningCutoffIso;
 }
 
 function latestByCreatedAt<T extends { createdAt: string }>(rows: T[]): T | null {
@@ -75,7 +80,8 @@ export function getBackgroundStatus(
   const latest = latestByCreatedAt(rows);
   if (!latest || latest.status !== "verified") return "missing";
   if (!latest.expiresAt) return "verified";
-  if (latest.expiresAt < todayIso) return "missing";
+  const expiresAtDateOnly = latest.expiresAt.slice(0, 10);
+  if (expiresAtDateOnly < todayIso) return "missing";
   return isWithinWarningWindow(latest.expiresAt, todayIso, warningCutoffIso) ? "expiring" : "verified";
 }
 
