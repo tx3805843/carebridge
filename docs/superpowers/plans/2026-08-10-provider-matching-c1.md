@@ -63,8 +63,7 @@ export interface ProviderEligibilityProfile {
   isNurse: boolean;
   employmentStatus: string;
   nmcLicensed: boolean;
-  currentZoneId: string | null;
-  currentZoneName: string | null;
+  currentZone: { id: string; name: string } | null;
 }
 
 // Returns every reason this provider is blocked from a visit against a client in
@@ -83,13 +82,20 @@ export function getBlockedReasons(profile: ProviderEligibilityProfile, targetZon
     reasons.push(profile.employmentStatus === "on_leave" ? "on leave" : "no longer active (departed)");
   }
 
-  if (profile.currentZoneId !== targetZoneId) {
-    reasons.push(profile.currentZoneId ? `rostered to ${profile.currentZoneName}` : "not yet rostered to any zone");
+  if (profile.currentZone?.id !== targetZoneId) {
+    reasons.push(profile.currentZone ? `rostered to ${profile.currentZone.name}` : "not yet rostered to any zone");
   }
 
   return reasons;
 }
 ```
+
+Note: this signature (`currentZone: { id: string; name: string } | null` as a single field, not two
+independently-nullable `currentZoneId`/`currentZoneName` fields) is a post-review fix — the
+original draft had them separate, and code-quality review on Task 1's first commit correctly
+flagged that as a co-nullability footgun (a caller could set one without the other, silently
+producing "rostered to null"). Fixed before any caller existed; every reference to this type
+below in Tasks 2 and 4 already reflects the corrected shape.
 
 - [ ] **Step 2: Typecheck**
 
@@ -164,14 +170,14 @@ export default async function NewVisitPage({
     const user = providerUserById.get(provider.user_id);
     const roleSlug = user ? roleSlugById.get(user.role_id) : undefined;
     const currentZoneId = getCurrentZoneId(provider.id, rosterAssignments);
+    const currentZoneName = currentZoneId ? zoneNameById.get(currentZoneId) : undefined;
 
     const profile: ProviderEligibilityProfile = {
       providerId: provider.id,
       isNurse: roleSlug === "nurse",
       employmentStatus: provider.employment_status,
       nmcLicensed: nmcLicensedByProviderId.get(provider.id) ?? false,
-      currentZoneId,
-      currentZoneName: currentZoneId ? (zoneNameById.get(currentZoneId) ?? null) : null,
+      currentZone: currentZoneId && currentZoneName ? { id: currentZoneId, name: currentZoneName } : null,
     };
 
     return { profile, label: user?.full_name ?? "Unnamed provider" };
@@ -451,14 +457,14 @@ export async function scheduleVisit(formData: FormData) {
     providerId,
     (rosterRows ?? []).map((row) => ({ providerId, zoneId: row.zone_id, weekStarting: row.week_starting })),
   );
+  const currentZoneName = currentZoneId ? zoneNameById.get(currentZoneId) : undefined;
 
   const profile: ProviderEligibilityProfile = {
     providerId,
     isNurse: providerUser?.role_id === nurseRole?.id,
     employmentStatus: provider.employment_status,
     nmcLicensed: verifiedProfile?.nmc_licensed ?? false,
-    currentZoneId,
-    currentZoneName: currentZoneId ? (zoneNameById.get(currentZoneId) ?? null) : null,
+    currentZone: currentZoneId && currentZoneName ? { id: currentZoneId, name: currentZoneName } : null,
   };
 
   const blockedReasons = getBlockedReasons(profile, client.zone_id);
