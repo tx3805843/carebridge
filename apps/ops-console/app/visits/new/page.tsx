@@ -102,14 +102,14 @@ export default async function NewVisitPage({
     zoneNameByClientId[client.id] = zoneNameById.get(client.zone_id) ?? "No zone";
   }
 
-  const careplanByClientId: Record<string, { effectiveFrom: string; summary: string } | null> = {};
+  const carePlanByClientId: Record<string, { effectiveFrom: string; summary: string } | null> = {};
   for (const client of clients ?? []) {
-    careplanByClientId[client.id] = null;
+    carePlanByClientId[client.id] = null;
   }
   for (const carePlan of carePlans ?? []) {
-    const current = careplanByClientId[carePlan.client_id];
+    const current = carePlanByClientId[carePlan.client_id];
     if (!current || carePlan.effective_from > current.effectiveFrom) {
-      careplanByClientId[carePlan.client_id] = { effectiveFrom: carePlan.effective_from, summary: carePlan.summary };
+      carePlanByClientId[carePlan.client_id] = { effectiveFrom: carePlan.effective_from, summary: carePlan.summary };
     }
   }
 
@@ -132,7 +132,7 @@ export default async function NewVisitPage({
         clients={clientOptions}
         matrix={matrix}
         zoneNameByClientId={zoneNameByClientId}
-        careplanByClientId={careplanByClientId}
+        carePlanByClientId={carePlanByClientId}
         visitsByProviderId={visitsByProviderId}
         error={error}
       />

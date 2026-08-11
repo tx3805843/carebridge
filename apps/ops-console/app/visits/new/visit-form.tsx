@@ -74,14 +74,14 @@ export function VisitForm({
   clients,
   matrix,
   zoneNameByClientId,
-  careplanByClientId,
+  carePlanByClientId,
   visitsByProviderId,
   error,
 }: {
   clients: Option[];
   matrix: Record<string, ClientEligibility>;
   zoneNameByClientId: Record<string, string>;
-  careplanByClientId: Record<string, CarePlanSummary | null>;
+  carePlanByClientId: Record<string, CarePlanSummary | null>;
   visitsByProviderId: Record<string, ExistingVisit[]>;
   error?: string;
 }) {
@@ -89,7 +89,7 @@ export function VisitForm({
 
   const eligibility = matrix[snapshot.clientId];
   const zoneName = snapshot.clientId ? zoneNameByClientId[snapshot.clientId] : undefined;
-  const carePlan = snapshot.clientId ? careplanByClientId[snapshot.clientId] : undefined;
+  const carePlan = snapshot.clientId ? carePlanByClientId[snapshot.clientId] : undefined;
   const conflict = findConflict(snapshot.providerId, snapshot.scheduledStart, snapshot.scheduledEnd, visitsByProviderId);
 
   const selectedClientLabel = clients.find((client) => client.id === snapshot.clientId)?.label ?? "";
