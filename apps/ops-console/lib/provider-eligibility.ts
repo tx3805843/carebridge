@@ -31,8 +31,7 @@ export interface ProviderEligibilityProfile {
   isNurse: boolean;
   employmentStatus: string;
   nmcLicensed: boolean;
-  currentZoneId: string | null;
-  currentZoneName: string | null;
+  currentZone: { id: string; name: string } | null;
 }
 
 // Returns every reason this provider is blocked from a visit against a client in
@@ -51,8 +50,8 @@ export function getBlockedReasons(profile: ProviderEligibilityProfile, targetZon
     reasons.push(profile.employmentStatus === "on_leave" ? "on leave" : "no longer active (departed)");
   }
 
-  if (profile.currentZoneId !== targetZoneId) {
-    reasons.push(profile.currentZoneId ? `rostered to ${profile.currentZoneName}` : "not yet rostered to any zone");
+  if (profile.currentZone?.id !== targetZoneId) {
+    reasons.push(profile.currentZone ? `rostered to ${profile.currentZone.name}` : "not yet rostered to any zone");
   }
 
   return reasons;
