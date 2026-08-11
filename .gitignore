@@ -32,5 +32,9 @@ pnpm-debug.log*
 
 # misc
 *.tsbuildinfo
-coverage/
+# Anchored to package roots (test-coverage output), not a bare "coverage/" glob — that
+# silently swallowed app/roster/coverage/ (a real Next.js route, not test output) until
+# D3 caught it (roster weekly coverage board increment).
+apps/*/coverage/
+packages/*/coverage/
 next-env.d.ts
