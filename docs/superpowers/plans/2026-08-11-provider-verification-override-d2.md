@@ -1507,10 +1507,11 @@ create-override form is now visible. Fill: Signal = "NMC PIN/AIN", Value = "True
 "Phone-verified renewal pending paperwork", Effective until = a date 30 days out. Submit,
 confirm the dialog, confirm. Confirm the page redirects back with an `added=override`
 success message, the new row appears in the overrides table with an "Active" badge, and the
-"Verified profile" section's NMC badge now reads "NMC — Verified" (evidence-derived — this
-badge doesn't read the override at all, it's still computed purely from evidence; confirm
-this is unchanged from before the override, since the override affects `verified_profile`,
-not D1's display module).
+"Verified profile" section's NMC badge is **unchanged** — still "NMC — Missing" (evidence-derived —
+this badge doesn't read the override at all, it's still computed purely from evidence; the
+override affects `verified_profile`, not D1's display module, so seeing the badge stay
+"Missing" while the override is genuinely active is the CORRECT, expected outcome, not a
+bug — it's the exact dual-reading the design doc calls out).
 
 - [ ] **Step 4: Confirm the override reached `verified_profile` and `/visits/new`**
 
