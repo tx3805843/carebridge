@@ -10,21 +10,17 @@
 // Function, not a UI reminder. NMC PIN/AIN expire every 12 months: flag within 30 days,
 // auto-suspend scheduling eligibility on lapse."
 //
-// Two separate mechanisms, deliberately not conflated:
-//   1. "Flag within 30 days" is read-only — credentials within the window are counted and
-//      notified about, but their `status` is untouched (still whatever it was, e.g.
-//      'verified'). Only actual expiry (expiry_date < today) auto-transitions `status` to
-//      'expired', with a credential_verification_event recording why.
-//   2. "Auto-suspend scheduling eligibility on lapse" is `verified_profile.nmc_licensed`,
-//      recomputed from scratch every run for every nurse (self-healing: correct whether the
-//      lapse just happened this run or was already sitting there from a prior one) rather
-//      than incrementally patched — true iff they hold a 'verified' nmc_pin_ain credential
-//      that isn't past its expiry_date. Caregivers never have an nmc_pin_ain credential, so
-//      they're naturally excluded without special-casing.
-// Newly-suspended providers (nmc_licensed flips true -> false this run) get a best-effort
-// WhatsApp notification (provider + coordinators) — implemented natively here rather than
-// importing apps/ops-console/lib/whatsapp.ts, which is Next.js-server-only code that can't
-// run in this Deno runtime.
+// As of Increment D2 (see docs/superpowers/specs/2026-08-11-provider-verification-override-d2-design.md),
+// this function no longer computes nmc_licensed itself. It only does the "flag within 30
+// days" / "auto-expire lapsed credentials" work below — the UPDATE that auto-expires a
+// credential fires internal.trg_recompute_verified_profile (a Postgres trigger, same
+// transaction), which recomputes all four verified_profile signals from evidence, applying
+// any active governed override, and is the single authoritative implementation shared with
+// the ops-console app's own writes. This function used to duplicate that computation in JS;
+// removed to avoid two independent implementations of the same eligibility logic drifting
+// apart. To detect "newly suspended" for notification purposes, this function now snapshots
+// verified_profile.nmc_licensed before its own updates and diffs against the value after —
+// reading the trigger's output, not recomputing it.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -108,6 +104,30 @@ Deno.serve(async (req: Request) => {
     .toISOString()
     .slice(0, 10);
 
+  // ── 0. Snapshot nurse verified_profile.nmc_licensed BEFORE this run's updates ─────────
+  const { data: nurseRole } = await supabase.from("role").select("id").eq("slug", "nurse").single();
+  const { data: nurseUsers } = nurseRole
+    ? await supabase.from("user").select("id, phone").eq("role_id", nurseRole.id)
+    : { data: [] };
+  const nurseUserIds = (nurseUsers ?? []).map((u) => u.id);
+
+  const { data: nurseProviders } =
+    nurseUserIds.length > 0
+      ? await supabase.from("provider").select("id, user_id").in("user_id", nurseUserIds)
+      : { data: [] };
+
+  const { data: beforeProfiles } =
+    (nurseProviders ?? []).length > 0
+      ? await supabase
+          .from("verified_profile")
+          .select("provider_id, nmc_licensed")
+          .in(
+            "provider_id",
+            (nurseProviders ?? []).map((p) => p.id),
+          )
+      : { data: [] };
+  const wasLicensedByProviderId = new Map((beforeProfiles ?? []).map((p) => [p.provider_id, p.nmc_licensed]));
+
   // ── 1. Flag expiring-soon / auto-expire lapsed credentials ────────────────────────────
   const { data: credentials } = await supabase
     .from("credential")
@@ -133,6 +153,8 @@ Deno.serve(async (req: Request) => {
         outcome: "expired",
         notes: "Auto-expired by credential-expiry-cron (past expiry_date).",
       });
+      // This UPDATE fires internal.trg_recompute_verified_profile (same transaction),
+      // recomputing all four verified_profile signals for credential.provider_id.
       await supabase.from("credential").update({ status: "expired" }).eq("id", credential.id);
       autoExpired += 1;
     } else if (expiryDate <= warningCutoff) {
@@ -140,53 +162,24 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── 2. Recompute NMC scheduling eligibility for every nurse, from scratch ─────────────
-  const { data: nurseRole } = await supabase.from("role").select("id").eq("slug", "nurse").single();
-  const { data: nmcCredentialType } = await supabase
-    .from("credential_type")
-    .select("id")
-    .eq("slug", "nmc_pin_ain")
-    .single();
+  // ── 2. Diff nurse verified_profile.nmc_licensed AFTER this run's updates ──────────────
+  const { data: afterProfiles } =
+    (nurseProviders ?? []).length > 0
+      ? await supabase
+          .from("verified_profile")
+          .select("provider_id, nmc_licensed")
+          .in(
+            "provider_id",
+            (nurseProviders ?? []).map((p) => p.id),
+          )
+      : { data: [] };
 
-  let suspended = 0;
   const newlySuspended: { providerId: string; userId: string }[] = [];
-
-  if (nurseRole && nmcCredentialType) {
-    const { data: nurseUsers } = await supabase.from("user").select("id").eq("role_id", nurseRole.id);
-    const nurseUserIds = (nurseUsers ?? []).map((u) => u.id);
-
-    const { data: nurseProviders } =
-      nurseUserIds.length > 0
-        ? await supabase.from("provider").select("id, user_id").in("user_id", nurseUserIds)
-        : { data: [] };
-
-    for (const provider of nurseProviders ?? []) {
-      const { data: validNmc } = await supabase
-        .from("credential")
-        .select("id")
-        .eq("provider_id", provider.id)
-        .eq("credential_type_id", nmcCredentialType.id)
-        .eq("status", "verified")
-        .or(`expiry_date.is.null,expiry_date.gte.${todayIso}`)
-        .limit(1)
-        .maybeSingle();
-
-      const eligible = Boolean(validNmc);
-
-      const { data: existingProfile } = await supabase
-        .from("verified_profile")
-        .select("nmc_licensed")
-        .eq("provider_id", provider.id)
-        .maybeSingle();
-
-      if (existingProfile && existingProfile.nmc_licensed !== eligible) {
-        await supabase.from("verified_profile").update({ nmc_licensed: eligible }).eq("provider_id", provider.id);
-
-        if (!eligible) {
-          suspended += 1;
-          newlySuspended.push({ providerId: provider.id, userId: provider.user_id });
-        }
-      }
+  for (const profile of afterProfiles ?? []) {
+    const wasLicensed = wasLicensedByProviderId.get(profile.provider_id) ?? false;
+    if (wasLicensed && !profile.nmc_licensed) {
+      const provider = (nurseProviders ?? []).find((p) => p.id === profile.provider_id);
+      if (provider) newlySuspended.push({ providerId: provider.id, userId: provider.user_id });
     }
   }
 
@@ -213,7 +206,13 @@ Deno.serve(async (req: Request) => {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, checked: (credentials ?? []).length, expiringSoon, autoExpired, suspended }),
+    JSON.stringify({
+      ok: true,
+      checked: (credentials ?? []).length,
+      expiringSoon,
+      autoExpired,
+      suspended: newlySuspended.length,
+    }),
     { headers: { "content-type": "application/json" } },
   );
 });
