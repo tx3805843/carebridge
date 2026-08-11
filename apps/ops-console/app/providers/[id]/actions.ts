@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStaffUser } from "@/lib/auth";
+import { OVERRIDE_SIGNALS } from "./constants";
 
 const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "expired", "rejected"];
 
@@ -169,15 +170,6 @@ export async function updateEmploymentStatus(providerId: string, formData: FormD
 // Matches CRITICAL_RESOLVER_ROLE_SLUGS in apps/ops-console/app/exceptions/constants.ts —
 // same bar for a credentialing-eligibility override as for resolving a critical escalation.
 const OVERRIDE_APPROVER_ROLE_SLUGS = ["clinical_director", "admin"];
-
-export const OVERRIDE_SIGNAL_LABEL: Record<string, string> = {
-  id_verified: "ID verification",
-  nmc_licensed: "NMC PIN/AIN",
-  background_checked: "Background check",
-  training_current: "Training",
-};
-
-const OVERRIDE_SIGNALS = Object.keys(OVERRIDE_SIGNAL_LABEL);
 
 // Defense-in-depth, matching apps/ops-console/app/exceptions/actions.ts#resolveEscalation's
 // own posture: verification_override's RLS (internal.is_credentialing_approver()) is the

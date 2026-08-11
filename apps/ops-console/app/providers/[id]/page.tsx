@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { EXPIRY_WARNING_DAYS, getProviderVerificationBadges, type VerificationState } from "@/lib/provider-verification-status";
+import { OVERRIDE_SIGNAL_LABEL, OVERRIDE_SIGNALS } from "./constants";
 import {
   addBackgroundCheck,
   addCredential,
@@ -12,7 +13,6 @@ import {
   addTrainingRecord,
   createVerificationOverride,
   logCredentialVerification,
-  OVERRIDE_SIGNAL_LABEL,
   revokeVerificationOverride,
   updateEmploymentStatus,
 } from "./actions";
@@ -59,10 +59,6 @@ interface VerificationOverrideRow {
   effective_until: string;
   revoked_at: string | null;
 }
-
-// Derived from OVERRIDE_SIGNAL_LABEL (imported from ./actions) so the dropdown can never drift
-// from the DB-enforced whitelist.
-const OVERRIDE_SIGNALS = Object.keys(OVERRIDE_SIGNAL_LABEL);
 
 // Matches D1's own VERIFICATION_BADGE map in apps/ops-console/app/providers/page.tsx —
 // duplicated here rather than shared, same small-array-duplication precedent already
