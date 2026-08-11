@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@carebridge/ui";
 import { scheduleVisit } from "./actions";
 
@@ -8,20 +9,38 @@ interface Option {
   label: string;
 }
 
+interface BlockedOption extends Option {
+  reasons: string[];
+}
+
+interface ClientEligibility {
+  eligible: Option[];
+  blocked: BlockedOption[];
+}
+
 export function VisitForm({
   clients,
-  providers,
+  matrix,
   error,
 }: {
   clients: Option[];
-  providers: Option[];
+  matrix: Record<string, ClientEligibility>;
   error?: string;
 }) {
+  const [clientId, setClientId] = useState("");
+  const eligibility = matrix[clientId];
+
   return (
     <form action={scheduleVisit} className="flex w-full max-w-xl flex-col gap-3">
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Client
-        <select name="clientId" required defaultValue="" className="rounded-md border border-border px-3 py-2">
+        <select
+          name="clientId"
+          required
+          value={clientId}
+          onChange={(event) => setClientId(event.target.value)}
+          className="rounded-md border border-border px-3 py-2"
+        >
           <option value="" disabled>
             Select a client
           </option>
@@ -34,15 +53,35 @@ export function VisitForm({
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Provider
-        <select name="providerId" required defaultValue="" className="rounded-md border border-border px-3 py-2">
+        <select
+          key={clientId}
+          name="providerId"
+          required
+          defaultValue=""
+          disabled={!eligibility}
+          className="rounded-md border border-border px-3 py-2 disabled:cursor-not-allowed disabled:bg-muted"
+        >
           <option value="" disabled>
-            Select a provider
+            {eligibility ? "Select a provider" : "Select a client first"}
           </option>
-          {providers.map((provider) => (
-            <option key={provider.id} value={provider.id}>
-              {provider.label}
-            </option>
-          ))}
+          {eligibility ? (
+            <>
+              <optgroup label="Eligible">
+                {eligibility.eligible.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Blocked">
+                {eligibility.blocked.map((provider) => (
+                  <option key={provider.id} value={provider.id} disabled>
+                    {provider.label} — {provider.reasons.join("; ")}
+                  </option>
+                ))}
+              </optgroup>
+            </>
+          ) : null}
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
