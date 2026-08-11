@@ -1625,11 +1625,78 @@ export type Database = {
           },
         ]
       }
+      verification_override: {
+        Row: {
+          created_at: string
+          created_by: string
+          effective_from: string
+          effective_until: string
+          id: string
+          override_value: boolean
+          provider_id: string
+          reason: string
+          revoked_at: string | null
+          revoked_by: string | null
+          signal: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          effective_from?: string
+          effective_until: string
+          id?: string
+          override_value: boolean
+          provider_id: string
+          reason: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          signal: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          effective_from?: string
+          effective_until?: string
+          id?: string
+          override_value?: boolean
+          provider_id?: string
+          reason?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          signal?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_override_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_override_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "provider"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_override_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verified_profile: {
         Row: {
           background_checked: boolean
           created_at: string
-          created_by: string
+          created_by: string | null
           id: string
           id_verified: boolean
           nmc_licensed: boolean
@@ -1640,7 +1707,7 @@ export type Database = {
         Insert: {
           background_checked?: boolean
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: string
           id_verified?: boolean
           nmc_licensed?: boolean
@@ -1651,7 +1718,7 @@ export type Database = {
         Update: {
           background_checked?: boolean
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: string
           id_verified?: boolean
           nmc_licensed?: boolean
