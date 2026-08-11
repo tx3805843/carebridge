@@ -1,17 +1,20 @@
 import { notFound } from "next/navigation";
-import { Button, DataTable, EntitySummaryCard } from "@carebridge/ui";
+import { Button, ConfirmSubmitButton, DataTable, EntitySummaryCard, StatusBadge } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
+import { getProviderVerificationBadges, type VerificationState } from "@/lib/provider-verification-status";
 import {
   addBackgroundCheck,
   addCredential,
   addIdentityVerification,
   addTrainingRecord,
+  createVerificationOverride,
   logCredentialVerification,
+  OVERRIDE_SIGNAL_LABEL,
+  revokeVerificationOverride,
   updateEmploymentStatus,
-  updateVerifiedProfile,
 } from "./actions";
 
 const EMPLOYMENT_STATUSES = ["active", "on_leave", "departed"];
@@ -47,6 +50,39 @@ interface TrainingRecordRow {
   completed_at: string | null;
 }
 
+interface VerificationOverrideRow {
+  id: string;
+  signal: string;
+  override_value: boolean;
+  reason: string;
+  effective_from: string;
+  effective_until: string;
+  revoked_at: string | null;
+}
+
+// Duplicated from actions.ts's own copy (used there for server-side validation, here for the
+// <select> options) — matches this file's existing VERIFICATION_STATUSES precedent, already
+// independently declared in both actions.ts and page.tsx.
+const OVERRIDE_SIGNALS = ["id_verified", "nmc_licensed", "background_checked", "training_current"];
+
+// Matches D1's own VERIFICATION_BADGE map in apps/ops-console/app/providers/page.tsx —
+// duplicated here rather than shared, same small-array-duplication precedent already
+// established between this file and its own actions.ts (VERIFICATION_STATUSES).
+const VERIFICATION_BADGE: Record<
+  VerificationState,
+  { variant: "success" | "warning" | "critical" | "neutral"; label: string }
+> = {
+  verified: { variant: "success", label: "Verified" },
+  expiring: { variant: "warning", label: "Expiring" },
+  missing: { variant: "critical", label: "Missing" },
+  not_applicable: { variant: "neutral", label: "N/A" },
+};
+
+function verificationBadge(signalLabel: string, state: VerificationState) {
+  const { variant, label } = VERIFICATION_BADGE[state];
+  return <StatusBadge variant={variant} label={`${signalLabel} — ${label}`} />;
+}
+
 export default async function ProviderDetailPage({
   params,
   searchParams,
@@ -78,33 +114,64 @@ export default async function ProviderDetailPage({
     { data: identityVerifications },
     { data: backgroundChecks },
     { data: trainingRecords },
+    { data: roles },
   ] = await Promise.all([
-    supabase.from("user").select("full_name, email, phone").eq("id", provider.user_id).maybeSingle(),
+    supabase.from("user").select("full_name, email, phone, role_id").eq("id", provider.user_id).maybeSingle(),
     supabase.from("verified_profile").select("*").eq("provider_id", provider.id).maybeSingle(),
     supabase
       .from("credential")
-      .select("id, credential_type_id, issuing_authority, status, expiry_date")
+      .select("id, credential_type_id, issuing_authority, status, expiry_date, created_at")
       .eq("provider_id", provider.id)
       .order("created_at", { ascending: false }),
-    supabase.from("credential_type").select("id, label").order("label"),
+    supabase.from("credential_type").select("id, label, slug").order("label"),
     supabase
       .from("identity_verification")
-      .select("id, vendor, status, verified_at")
+      .select("id, vendor, status, verified_at, created_at")
       .eq("provider_id", provider.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("background_check")
-      .select("id, status, document_ref, expires_at")
+      .select("id, status, document_ref, expires_at, created_at")
       .eq("provider_id", provider.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("training_record")
-      .select("id, title, cpd_points, completed_at")
+      .select("id, title, cpd_points, completed_at, created_at")
       .eq("provider_id", provider.id)
       .order("completed_at", { ascending: false }),
+    supabase.from("role").select("id, slug"),
   ]);
 
   const credentialTypeLabelById = new Map((credentialTypes ?? []).map((type) => [type.id, type.label]));
+
+  const roleSlugById = new Map((roles ?? []).map((role) => [role.id, role.slug]));
+  const isNurse = user ? roleSlugById.get(user.role_id) === "nurse" : false;
+
+  const credentialTypeSlugById = new Map((credentialTypes ?? []).map((type) => [type.id, type.slug]));
+  const nmcCredentials = (credentials ?? []).filter((c) => credentialTypeSlugById.get(c.credential_type_id) === "nmc_pin_ain");
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const warningCutoffIso = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const verificationBadges = getProviderVerificationBadges({
+    isNurse,
+    identityVerifications: (identityVerifications ?? []).map((row) => ({ status: row.status, createdAt: row.created_at })),
+    nmcCredentials: nmcCredentials.map((row) => ({ status: row.status, expiryDate: row.expiry_date, createdAt: row.created_at })),
+    backgroundChecks: (backgroundChecks ?? []).map((row) => ({ status: row.status, expiresAt: row.expires_at, createdAt: row.created_at })),
+    trainingRecords: (trainingRecords ?? []).map((row) => ({ createdAt: row.created_at })),
+    todayIso,
+    warningCutoffIso,
+  });
+
+  const { data: overrides } = await supabase
+    .from("verification_override")
+    .select("id, signal, override_value, reason, effective_from, effective_until, revoked_at")
+    .eq("provider_id", provider.id)
+    .order("created_at", { ascending: false });
+
+  const isApprover = staffUser.roleSlug === "clinical_director" || staffUser.roleSlug === "admin";
+
+  const boundCreateOverride = createVerificationOverride.bind(null, provider.id);
 
   const boundUpdateEmploymentStatus = updateEmploymentStatus.bind(null, provider.id);
   const boundAddCredential = addCredential.bind(null, provider.id);
@@ -112,7 +179,6 @@ export default async function ProviderDetailPage({
   const boundAddIdentity = addIdentityVerification.bind(null, provider.id);
   const boundAddBackgroundCheck = addBackgroundCheck.bind(null, provider.id);
   const boundAddTraining = addTrainingRecord.bind(null, provider.id);
-  const boundUpdateProfile = updateVerifiedProfile.bind(null, provider.id);
 
   return (
     <AppShell user={staffUser}>
@@ -165,33 +231,114 @@ export default async function ProviderDetailPage({
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
         <h2 className="text-lg font-medium">Verified profile</h2>
-        <form action={boundUpdateProfile} className="flex flex-col gap-3 rounded-md border border-border p-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="idVerified" defaultChecked={verifiedProfile?.id_verified ?? false} />
-            ID verified
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="nmcLicensed" defaultChecked={verifiedProfile?.nmc_licensed ?? false} />
-            NMC licensed (scheduling eligibility — recomputed automatically each night once an NMC
-            PIN/AIN credential is logged; this toggle is a manual stopgap between now and the next
-            automatic check)
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="backgroundChecked"
-              defaultChecked={verifiedProfile?.background_checked ?? false}
-            />
-            Background checked
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="trainingCurrent" defaultChecked={verifiedProfile?.training_current ?? false} />
-            Training current
-          </label>
-          <Button type="submit" size="sm">
-            Save
-          </Button>
-        </form>
+        <p className="text-sm text-muted-foreground">
+          Computed automatically from the records below — not editable here. To temporarily
+          correct a value, use an override below.
+        </p>
+        <div className="flex flex-wrap gap-2 rounded-md border border-border p-4">
+          {verificationBadge("ID", verificationBadges.id)}
+          {verificationBadge("NMC", verificationBadges.nmc)}
+          {verificationBadge("Background", verificationBadges.background)}
+          {verificationBadge("Training", verificationBadges.training)}
+        </div>
+      </section>
+
+      <section className="flex w-full max-w-2xl flex-col gap-3">
+        <h2 className="text-lg font-medium">Verification overrides</h2>
+        <DataTable<VerificationOverrideRow>
+          rows={overrides ?? []}
+          rowKey={(row) => row.id}
+          emptyMessage="No overrides on record."
+          columns={[
+            { key: "signal", header: "Signal", render: (row) => OVERRIDE_SIGNAL_LABEL[row.signal] ?? row.signal },
+            { key: "value", header: "Value", render: (row) => (row.override_value ? "True" : "False") },
+            { key: "reason", header: "Reason", render: (row) => row.reason },
+            {
+              key: "window",
+              header: "Effective",
+              render: (row) => `${formatDate(row.effective_from)} – ${formatDate(row.effective_until)}`,
+            },
+            {
+              key: "state",
+              header: "Status",
+              render: (row) =>
+                row.revoked_at ? (
+                  <StatusBadge variant="neutral" label="Revoked" />
+                ) : new Date(row.effective_until) < new Date() ? (
+                  <StatusBadge variant="neutral" label="Expired" />
+                ) : (
+                  <StatusBadge variant="warning" label="Active" />
+                ),
+            },
+            {
+              key: "actions",
+              header: "",
+              render: (row) =>
+                !row.revoked_at && new Date(row.effective_until) >= new Date() && isApprover ? (
+                  <form action={revokeVerificationOverride.bind(null, provider.id, row.id)}>
+                    <ConfirmSubmitButton
+                      size="sm"
+                      variant="outline"
+                      confirmTitle="Revoke override"
+                      confirmDescription={
+                        <>
+                          Revoke this override on <strong>{OVERRIDE_SIGNAL_LABEL[row.signal]}</strong>? The
+                          computed value will apply again immediately.
+                        </>
+                      }
+                      confirmLabel="Revoke"
+                    >
+                      Revoke
+                    </ConfirmSubmitButton>
+                  </form>
+                ) : null,
+            },
+          ]}
+        />
+
+        {isApprover ? (
+          <form action={boundCreateOverride} className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4">
+            <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+              Signal
+              <select name="signal" required defaultValue="" className="rounded-md border border-border px-3 py-2">
+                <option value="" disabled>
+                  Select
+                </option>
+                {OVERRIDE_SIGNALS.map((signal) => (
+                  <option key={signal} value={signal}>
+                    {OVERRIDE_SIGNAL_LABEL[signal]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+              Value
+              <select name="overrideValue" required defaultValue="" className="rounded-md border border-border px-3 py-2">
+                <option value="" disabled>
+                  Select
+                </option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+              Reason
+              <input name="reason" required className="rounded-md border border-border px-3 py-2" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+              Effective until
+              <input type="date" name="effectiveUntil" required className="rounded-md border border-border px-3 py-2" />
+            </label>
+            <ConfirmSubmitButton
+              size="sm"
+              confirmTitle="Create override"
+              confirmDescription="This overrides the computed verification status for this provider until the effective-until date. Confirm?"
+              confirmLabel="Create override"
+            >
+              Create override
+            </ConfirmSubmitButton>
+          </form>
+        ) : null}
       </section>
 
       <section className="flex w-full max-w-2xl flex-col gap-3">
