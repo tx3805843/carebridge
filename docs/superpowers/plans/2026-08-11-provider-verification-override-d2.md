@@ -128,7 +128,8 @@ security invoker
 set search_path = public, pg_temp
 as $$
 begin
-  if new.provider_id is distinct from old.provider_id
+  if new.id is distinct from old.id
+    or new.provider_id is distinct from old.provider_id
     or new.signal is distinct from old.signal
     or new.override_value is distinct from old.override_value
     or new.reason is distinct from old.reason
