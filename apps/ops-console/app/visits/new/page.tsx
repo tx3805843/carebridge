@@ -2,6 +2,7 @@ import { PageHeader } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
+import { getBlockedReasons, getCurrentZoneId, type ProviderEligibilityProfile } from "@/lib/provider-eligibility";
 import { VisitForm } from "./visit-form";
 
 export default async function NewVisitPage({
@@ -14,30 +15,79 @@ export default async function NewVisitPage({
 
   const supabase = await createClient();
 
-  const [{ data: clients }, { data: providers }] = await Promise.all([
-    supabase.from("client").select("id, full_name").order("full_name"),
-    supabase.from("provider").select("id, user_id"),
-  ]);
+  const [{ data: clients }, { data: providers }, { data: roles }, { data: verifiedProfiles }, { data: rosterRows }, { data: zones }] =
+    await Promise.all([
+      supabase.from("client").select("id, full_name, zone_id").order("full_name"),
+      supabase.from("provider").select("id, user_id, employment_status"),
+      supabase.from("role").select("id, slug"),
+      supabase.from("verified_profile").select("provider_id, nmc_licensed"),
+      supabase.from("roster").select("provider_id, zone_id, week_starting"),
+      supabase.from("zone").select("id, name"),
+    ]);
 
   const providerUserIds = (providers ?? []).map((provider) => provider.user_id);
   const { data: providerUsers } =
     providerUserIds.length > 0
-      ? await supabase.from("user").select("id, full_name").in("id", providerUserIds)
+      ? await supabase.from("user").select("id, full_name, role_id").in("id", providerUserIds)
       : { data: [] };
 
-  const providerNameByUserId = new Map((providerUsers ?? []).map((user) => [user.id, user.full_name]));
+  const providerUserById = new Map((providerUsers ?? []).map((user) => [user.id, user]));
+  const roleSlugById = new Map((roles ?? []).map((role) => [role.id, role.slug]));
+  const nmcLicensedByProviderId = new Map((verifiedProfiles ?? []).map((vp) => [vp.provider_id, vp.nmc_licensed]));
+  const zoneNameById = new Map((zones ?? []).map((zone) => [zone.id, zone.name]));
+
+  const rosterAssignments = (rosterRows ?? []).map((row) => ({
+    providerId: row.provider_id,
+    zoneId: row.zone_id,
+    weekStarting: row.week_starting,
+  }));
+
+  const providerProfiles = (providers ?? []).map((provider) => {
+    const user = providerUserById.get(provider.user_id);
+    const roleSlug = user ? roleSlugById.get(user.role_id) : undefined;
+    const currentZoneId = getCurrentZoneId(provider.id, rosterAssignments);
+    const currentZoneName = currentZoneId ? zoneNameById.get(currentZoneId) : undefined;
+
+    const profile: ProviderEligibilityProfile = {
+      providerId: provider.id,
+      isNurse: roleSlug === "nurse",
+      employmentStatus: provider.employment_status,
+      nmcLicensed: nmcLicensedByProviderId.get(provider.id) ?? false,
+      currentZone: currentZoneId && currentZoneName ? { id: currentZoneId, name: currentZoneName } : null,
+    };
+
+    return { profile, label: user?.full_name ?? "Unnamed provider" };
+  });
 
   const clientOptions = (clients ?? []).map((client) => ({ id: client.id, label: client.full_name }));
-  const providerOptions = (providers ?? []).map((provider) => ({
-    id: provider.id,
-    label: providerNameByUserId.get(provider.user_id) ?? "Unnamed provider",
-  }));
+
+  const matrix: Record<
+    string,
+    { eligible: { id: string; label: string }[]; blocked: { id: string; label: string; reasons: string[] }[] }
+  > = {};
+
+  for (const client of clients ?? []) {
+    const eligible: { id: string; label: string }[] = [];
+    const blocked: { id: string; label: string; reasons: string[] }[] = [];
+
+    for (const { profile, label } of providerProfiles) {
+      const reasons = getBlockedReasons(profile, client.zone_id);
+
+      if (reasons.length === 0) {
+        eligible.push({ id: profile.providerId, label });
+      } else {
+        blocked.push({ id: profile.providerId, label, reasons });
+      }
+    }
+
+    matrix[client.id] = { eligible, blocked };
+  }
 
   return (
     <AppShell user={staffUser}>
       <PageHeader title="Schedule a visit" />
       {visitScheduled ? <p className="mb-4 text-sm text-success">Visit scheduled.</p> : null}
-      <VisitForm clients={clientOptions} providers={providerOptions} error={error} />
+      <VisitForm clients={clientOptions} matrix={matrix} error={error} />
     </AppShell>
   );
 }
