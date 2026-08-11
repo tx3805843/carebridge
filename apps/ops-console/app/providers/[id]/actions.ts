@@ -230,7 +230,7 @@ export async function createVerificationOverride(providerId: string, formData: F
   redirect(`/providers/${providerId}?added=override`);
 }
 
-export async function revokeVerificationOverride(providerId: string, overrideId: string, formData: FormData) {
+export async function revokeVerificationOverride(providerId: string, overrideId: string, _formData: FormData) {
   const staffUser = await requireStaffUser();
 
   if (!OVERRIDE_APPROVER_ROLE_SLUGS.includes(staffUser.roleSlug)) {
