@@ -163,7 +163,6 @@ export default async function RosterCoveragePage({
   const zoneIdByProviderId = new Map((rosterRows ?? []).map((row) => [row.provider_id, row.zone_id]));
   const zoneNameById = new Map((zones ?? []).map((zone) => [zone.id, zone.name]));
   const providerById = new Map((providers ?? []).map((provider) => [provider.id, provider]));
-  const zoneById = new Map((zones ?? []).map((zone) => [zone.id, zone]));
   const rosteredProviderIdSet = new Set(rosteredProviderIds);
 
   const visitsByProviderId: Record<string, { scheduled_start: string; scheduled_end: string; status: string }[]> = {};
@@ -222,10 +221,9 @@ export default async function RosterCoveragePage({
   );
 
   const zoneCards: ZoneCard[] = zoneCoverage.map((coverage) => {
-    const zone = zoneById.get(coverage.zoneId);
     return {
       zoneId: coverage.zoneId,
-      zoneName: zone?.name ?? "Unknown zone",
+      zoneName: zoneNameById.get(coverage.zoneId) ?? "Unknown zone",
       isGap: coverage.isGap,
       rows: coverage.providerIds
         .map((providerId) => buildRow(providerId, true))
