@@ -14,11 +14,11 @@ export default async function NewSubscriptionPage({
 
   return (
     <>
-    <PageHeader title="New subscription" />
-    <NewSubscriptionForm
-      clients={(clients ?? []).map((client) => ({ id: client.id, label: client.full_name }))}
-      error={error}
-    />
+      <PageHeader title="New subscription" />
+      <NewSubscriptionForm
+        clients={(clients ?? []).map((client) => ({ id: client.id, label: client.full_name }))}
+        error={error}
+      />
     </>
   );
 }

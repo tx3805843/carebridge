@@ -74,230 +74,230 @@ export default async function ClientDetailPage({
 
   return (
     <>
-    <EntitySummaryCard
-      title={client.full_name}
-      subtitle={zone?.name ?? "No zone"}
-      meta={[
-        { label: "DOB", value: formatDate(client.date_of_birth) },
-        {
-          label: "Status",
-          value: (
-            <StatusBadge
-              variant={client.status === "active" ? "success" : "neutral"}
-              label={client.status === "active" ? "Active" : "Inactive"}
-            />
-          ),
-        },
-      ]}
-      actions={
-        <form action={(client.status === "active" ? deactivateClient : reactivateClient).bind(null, client.id)}>
-          <ConfirmSubmitButton
-            size="sm"
-            variant={client.status === "active" ? "destructive" : "outline"}
-            confirmTitle={client.status === "active" ? "Deactivate client" : "Reactivate client"}
-            confirmDescription={
-              client.status === "active" ? (
-                <>
-                  Deactivating <strong>{client.full_name}</strong> stops new visits from being scheduled for
-                  them. This can be undone by reactivating.
-                </>
-              ) : (
-                <>
-                  Reactivating <strong>{client.full_name}</strong> re-checks that they still have an emergency
-                  contact, a care plan, and an active authority grant. If any is missing, this will be rejected.
-                </>
-              )
-            }
-            confirmLabel={client.status === "active" ? "Deactivate" : "Reactivate"}
+      <EntitySummaryCard
+        title={client.full_name}
+        subtitle={zone?.name ?? "No zone"}
+        meta={[
+          { label: "DOB", value: formatDate(client.date_of_birth) },
+          {
+            label: "Status",
+            value: (
+              <StatusBadge
+                variant={client.status === "active" ? "success" : "neutral"}
+                label={client.status === "active" ? "Active" : "Inactive"}
+              />
+            ),
+          },
+        ]}
+        actions={
+          <form action={(client.status === "active" ? deactivateClient : reactivateClient).bind(null, client.id)}>
+            <ConfirmSubmitButton
+              size="sm"
+              variant={client.status === "active" ? "destructive" : "outline"}
+              confirmTitle={client.status === "active" ? "Deactivate client" : "Reactivate client"}
+              confirmDescription={
+                client.status === "active" ? (
+                  <>
+                    Deactivating <strong>{client.full_name}</strong> stops new visits from being scheduled for
+                    them. This can be undone by reactivating.
+                  </>
+                ) : (
+                  <>
+                    Reactivating <strong>{client.full_name}</strong> re-checks that they still have an emergency
+                    contact, a care plan, and an active authority grant. If any is missing, this will be rejected.
+                  </>
+                )
+              }
+              confirmLabel={client.status === "active" ? "Deactivate" : "Reactivate"}
+            >
+              {client.status === "active" ? "Deactivate client" : "Reactivate client"}
+            </ConfirmSubmitButton>
+          </form>
+        }
+      />
+
+      {updated ? <p className="mb-4 text-sm text-success">Updated.</p> : null}
+      {error ? <p className="mb-4 text-sm text-critical">{error}</p> : null}
+
+      <div className="flex flex-col gap-10">
+        <section className="flex w-full max-w-2xl flex-col gap-3">
+          <h2 className="text-lg font-medium">Client consent to receive care</h2>
+          <DataTable<ConsentRecordRow>
+            rows={consentRecords ?? []}
+            rowKey={(row) => row.id}
+            emptyMessage="No signed consent recorded yet."
+            columns={[
+              { key: "document", header: "Document", render: (row) => row.document_ref },
+              { key: "signed", header: "Signed", render: (row) => formatDate(row.signed_at) },
+            ]}
+          />
+          <form
+            action={recordConsent.bind(null, client.id)}
+            className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4"
           >
-            {client.status === "active" ? "Deactivate client" : "Reactivate client"}
-          </ConfirmSubmitButton>
-        </form>
-      }
-    />
+            <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+              Document ref
+              <input name="documentRef" required className="rounded-md border border-border px-3 py-2" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+              Signed at
+              <input type="date" name="signedAt" className="rounded-md border border-border px-3 py-2" />
+            </label>
+            <Button type="submit" size="sm">
+              Record consent
+            </Button>
+          </form>
+        </section>
 
-    {updated ? <p className="mb-4 text-sm text-success">Updated.</p> : null}
-    {error ? <p className="mb-4 text-sm text-critical">{error}</p> : null}
+        <section className="flex w-full max-w-3xl flex-col gap-6">
+          <h2 className="text-lg font-medium">Family sponsors & authority</h2>
+          {(sponsors ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No sponsors linked yet.</p>
+          ) : (
+            (sponsors ?? []).map((sponsor) => {
+              const sponsorUser = sponsorUserById.get(sponsor.user_id);
 
-    <div className="flex flex-col gap-10">
-      <section className="flex w-full max-w-2xl flex-col gap-3">
-        <h2 className="text-lg font-medium">Client consent to receive care</h2>
-        <DataTable<ConsentRecordRow>
-          rows={consentRecords ?? []}
-          rowKey={(row) => row.id}
-          emptyMessage="No signed consent recorded yet."
-          columns={[
-            { key: "document", header: "Document", render: (row) => row.document_ref },
-            { key: "signed", header: "Signed", render: (row) => formatDate(row.signed_at) },
-          ]}
-        />
-        <form
-          action={recordConsent.bind(null, client.id)}
-          className="flex flex-wrap items-end gap-2 rounded-md border border-border p-4"
-        >
-          <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-            Document ref
-            <input name="documentRef" required className="rounded-md border border-border px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-            Signed at
-            <input type="date" name="signedAt" className="rounded-md border border-border px-3 py-2" />
-          </label>
-          <Button type="submit" size="sm">
-            Record consent
-          </Button>
-        </form>
-      </section>
+              return (
+                <div key={sponsor.id} className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
+                  <div>
+                    <p className="font-medium">{sponsorUser?.full_name ?? "Unknown sponsor"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {sponsor.relationship} · {sponsorUser?.email ?? "no email"}
+                    </p>
+                  </div>
 
-      <section className="flex w-full max-w-3xl flex-col gap-6">
-        <h2 className="text-lg font-medium">Family sponsors & authority</h2>
-        {(sponsors ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No sponsors linked yet.</p>
-        ) : (
-          (sponsors ?? []).map((sponsor) => {
-            const sponsorUser = sponsorUserById.get(sponsor.user_id);
+                  <div className="flex flex-col gap-2">
+                    {AUTHORITY_TYPES.map((type) => {
+                      const activeGrant = (authorityGrants ?? []).find(
+                        (grant) =>
+                          grant.sponsor_id === sponsor.id && grant.authority_type === type.value && grant.status === "active",
+                      );
+                      const pendingGrant = (authorityGrants ?? []).find(
+                        (grant) =>
+                          grant.sponsor_id === sponsor.id && grant.authority_type === type.value && grant.status === "pending",
+                      );
+                      const badge = activeGrant
+                        ? ({ variant: "success", label: "Captured" } as const)
+                        : pendingGrant
+                          ? ({ variant: "warning", label: "Needs review" } as const)
+                          : ({ variant: "neutral", label: "Not granted" } as const);
 
-            return (
-              <div key={sponsor.id} className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
-                <div>
-                  <p className="font-medium">{sponsorUser?.full_name ?? "Unknown sponsor"}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {sponsor.relationship} · {sponsorUser?.email ?? "no email"}
-                  </p>
-                </div>
+                      return (
+                        <div
+                          key={type.value}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{type.label}</span>
+                            <StatusBadge variant={badge.variant} label={badge.label} />
+                            {activeGrant?.evidence_document_ref ? (
+                              <span className="text-xs text-muted-foreground">
+                                Evidence: {activeGrant.evidence_document_ref}
+                              </span>
+                            ) : null}
+                          </div>
+                          {activeGrant ? (
+                            <form action={revokeAuthority.bind(null, client.id)}>
+                              <input type="hidden" name="authorityGrantId" value={activeGrant.id} />
+                              <ConfirmSubmitButton
+                                size="sm"
+                                variant="destructive"
+                                confirmTitle="Revoke this authority?"
+                                confirmDescription={
+                                  <>
+                                    This revokes <strong>{type.label}</strong> for{" "}
+                                    <strong>{sponsorUser?.full_name ?? "this sponsor"}</strong>.
+                                  </>
+                                }
+                                confirmLabel="Revoke"
+                              >
+                                Revoke
+                              </ConfirmSubmitButton>
+                            </form>
+                          ) : (
+                            <form action={grantAuthority.bind(null, client.id)} className="flex flex-wrap items-end gap-2">
+                              <input type="hidden" name="sponsorId" value={sponsor.id} />
+                              <input type="hidden" name="authorityType" value={type.value} />
+                              <input
+                                name="evidenceDocumentRef"
+                                placeholder="Evidence ref (optional)"
+                                className="rounded-md border border-border px-2 py-1 text-xs"
+                              />
+                              <input
+                                type="date"
+                                name="effectiveFrom"
+                                aria-label="Effective from"
+                                className="rounded-md border border-border px-2 py-1 text-xs"
+                              />
+                              <input
+                                type="date"
+                                name="effectiveUntil"
+                                aria-label="Effective until"
+                                className="rounded-md border border-border px-2 py-1 text-xs"
+                              />
+                              <Button type="submit" size="sm" variant="outline">
+                                Grant
+                              </Button>
+                            </form>
+                          )}
+                        </div>
+                      );
+                    })}
 
-                <div className="flex flex-col gap-2">
-                  {AUTHORITY_TYPES.map((type) => {
-                    const activeGrant = (authorityGrants ?? []).find(
-                      (grant) =>
-                        grant.sponsor_id === sponsor.id && grant.authority_type === type.value && grant.status === "active",
-                    );
-                    const pendingGrant = (authorityGrants ?? []).find(
-                      (grant) =>
-                        grant.sponsor_id === sponsor.id && grant.authority_type === type.value && grant.status === "pending",
-                    );
-                    const badge = activeGrant
-                      ? ({ variant: "success", label: "Captured" } as const)
-                      : pendingGrant
-                        ? ({ variant: "warning", label: "Needs review" } as const)
+                    {CONSENT_SCOPES.map((scope) => {
+                      const grant = (consentGrants ?? []).find(
+                        (row) => row.grantee_user_id === sponsor.user_id && row.scope === scope.value && !row.revoked_at,
+                      );
+                      const badge = grant
+                        ? ({ variant: "success", label: "Captured" } as const)
                         : ({ variant: "neutral", label: "Not granted" } as const);
 
-                    return (
-                      <div
-                        key={type.value}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{type.label}</span>
-                          <StatusBadge variant={badge.variant} label={badge.label} />
-                          {activeGrant?.evidence_document_ref ? (
-                            <span className="text-xs text-muted-foreground">
-                              Evidence: {activeGrant.evidence_document_ref}
-                            </span>
-                          ) : null}
+                      return (
+                        <div
+                          key={scope.value}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{scope.label}</span>
+                            <StatusBadge variant={badge.variant} label={badge.label} />
+                          </div>
+                          {grant ? (
+                            <form action={revokeConsent.bind(null, client.id)}>
+                              <input type="hidden" name="consentGrantId" value={grant.id} />
+                              <ConfirmSubmitButton
+                                size="sm"
+                                variant="destructive"
+                                confirmTitle="Revoke this consent?"
+                                confirmDescription={
+                                  <>
+                                    This revokes <strong>{scope.label}</strong> for{" "}
+                                    <strong>{sponsorUser?.full_name ?? "this sponsor"}</strong>.
+                                  </>
+                                }
+                                confirmLabel="Revoke"
+                              >
+                                Revoke
+                              </ConfirmSubmitButton>
+                            </form>
+                          ) : (
+                            <form action={grantConsent.bind(null, client.id)}>
+                              <input type="hidden" name="sponsorId" value={sponsor.id} />
+                              <input type="hidden" name="scope" value={scope.value} />
+                              <Button type="submit" size="sm" variant="outline">
+                                Grant
+                              </Button>
+                            </form>
+                          )}
                         </div>
-                        {activeGrant ? (
-                          <form action={revokeAuthority.bind(null, client.id)}>
-                            <input type="hidden" name="authorityGrantId" value={activeGrant.id} />
-                            <ConfirmSubmitButton
-                              size="sm"
-                              variant="destructive"
-                              confirmTitle="Revoke this authority?"
-                              confirmDescription={
-                                <>
-                                  This revokes <strong>{type.label}</strong> for{" "}
-                                  <strong>{sponsorUser?.full_name ?? "this sponsor"}</strong>.
-                                </>
-                              }
-                              confirmLabel="Revoke"
-                            >
-                              Revoke
-                            </ConfirmSubmitButton>
-                          </form>
-                        ) : (
-                          <form action={grantAuthority.bind(null, client.id)} className="flex flex-wrap items-end gap-2">
-                            <input type="hidden" name="sponsorId" value={sponsor.id} />
-                            <input type="hidden" name="authorityType" value={type.value} />
-                            <input
-                              name="evidenceDocumentRef"
-                              placeholder="Evidence ref (optional)"
-                              className="rounded-md border border-border px-2 py-1 text-xs"
-                            />
-                            <input
-                              type="date"
-                              name="effectiveFrom"
-                              aria-label="Effective from"
-                              className="rounded-md border border-border px-2 py-1 text-xs"
-                            />
-                            <input
-                              type="date"
-                              name="effectiveUntil"
-                              aria-label="Effective until"
-                              className="rounded-md border border-border px-2 py-1 text-xs"
-                            />
-                            <Button type="submit" size="sm" variant="outline">
-                              Grant
-                            </Button>
-                          </form>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {CONSENT_SCOPES.map((scope) => {
-                    const grant = (consentGrants ?? []).find(
-                      (row) => row.grantee_user_id === sponsor.user_id && row.scope === scope.value && !row.revoked_at,
-                    );
-                    const badge = grant
-                      ? ({ variant: "success", label: "Captured" } as const)
-                      : ({ variant: "neutral", label: "Not granted" } as const);
-
-                    return (
-                      <div
-                        key={scope.value}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{scope.label}</span>
-                          <StatusBadge variant={badge.variant} label={badge.label} />
-                        </div>
-                        {grant ? (
-                          <form action={revokeConsent.bind(null, client.id)}>
-                            <input type="hidden" name="consentGrantId" value={grant.id} />
-                            <ConfirmSubmitButton
-                              size="sm"
-                              variant="destructive"
-                              confirmTitle="Revoke this consent?"
-                              confirmDescription={
-                                <>
-                                  This revokes <strong>{scope.label}</strong> for{" "}
-                                  <strong>{sponsorUser?.full_name ?? "this sponsor"}</strong>.
-                                </>
-                              }
-                              confirmLabel="Revoke"
-                            >
-                              Revoke
-                            </ConfirmSubmitButton>
-                          </form>
-                        ) : (
-                          <form action={grantConsent.bind(null, client.id)}>
-                            <input type="hidden" name="sponsorId" value={sponsor.id} />
-                            <input type="hidden" name="scope" value={scope.value} />
-                            <Button type="submit" size="sm" variant="outline">
-                              Grant
-                            </Button>
-                          </form>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </section>
-    </div>
+              );
+            })
+          )}
+        </section>
+      </div>
     </>
   );
 }

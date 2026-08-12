@@ -30,8 +30,8 @@ export default async function NewProviderPage({
 
   return (
     <>
-    <PageHeader title="Onboard a provider" />
-    <ProviderOnboardForm users={userOptions} error={error} />
+      <PageHeader title="Onboard a provider" />
+      <ProviderOnboardForm users={userOptions} error={error} />
     </>
   );
 }

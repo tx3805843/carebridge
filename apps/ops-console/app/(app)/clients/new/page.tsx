@@ -15,16 +15,16 @@ export default async function NewClientPage({
 
   return (
     <>
-    <PageHeader title="Onboard a new client" />
-    {onboarded ? (
-      <p className="mb-4 text-sm text-success">
-        Client onboarded.{" "}
-        <Link href={`/clients/${onboarded}`} className="underline">
-          Open client record
-        </Link>
-      </p>
-    ) : null}
-    <NewClientForm zones={zones ?? []} error={error} />
+      <PageHeader title="Onboard a new client" />
+      {onboarded ? (
+        <p className="mb-4 text-sm text-success">
+          Client onboarded.{" "}
+          <Link href={`/clients/${onboarded}`} className="underline">
+            Open client record
+          </Link>
+        </p>
+      ) : null}
+      <NewClientForm zones={zones ?? []} error={error} />
     </>
   );
 }
