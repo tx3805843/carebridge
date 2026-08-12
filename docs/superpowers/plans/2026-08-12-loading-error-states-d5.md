@@ -28,11 +28,12 @@ increment.
 
 **A note on mechanics:** most of this plan's file changes are a uniform, mechanical
 transformation (move a file, delete its `AppShell` import, replace its `<AppShell>`/
-`</AppShell>` wrapper with a Fragment `<>`/`</>` since every page has 2+ top-level children,
-remove one level of indentation from what's between them) applied to many files. Steps below
-give exact `sed` commands for the line-number-dependent dedent step (run first, before
-anything else changes line counts) and exact content-anchored `sed` deletions/substitutions
-for the rest (safe regardless of line number, since they match on unique literal text).
+`</AppShell>` wrapper with a Fragment `<>`/`</>` since every page has 2+ top-level children —
+`<>` occupies the same structural position `<AppShell>` did, so its children keep their
+*original* indentation, no dedent needed) applied to many files. Steps below give exact,
+content-anchored `sed` deletions/substitutions (safe regardless of line number, since they
+match on unique literal text) — Task 2's original steps included an incorrect dedent
+instruction, caught and corrected after the fact; see that task's own note.
 `sed -i ''` syntax below is macOS/BSD sed (empty string after `-i` for no backup file) —
 confirm your environment before running; GNU
 sed (Linux) omits the empty string argument.
@@ -210,14 +211,21 @@ wrapper tags would leave invalid JSX (multiple root elements in one `return`). I
 opening/closing tags are *replaced* with a Fragment (`<>`/`</>`), not deleted, so the existing
 children keep exactly one root wrapper.
 
-For each file: `git mv` into `(app)/`, dedent the block that was between the
-`<AppShell>`/`</AppShell>` tags by one level (2 spaces) using the line range below (run this
-**first**, before the content-based edits, since it depends on the file's original line
-numbers), then remove the `AppShell` import, the `requireStaffUser` import, and the
-`staffUser` assignment (content-anchored `sed` deletions — safe regardless of line-number
-drift from the dedent step, since dedent doesn't add/remove lines), then replace the two
-`<AppShell>`/`</AppShell>` lines with `<>`/`</>` (content-anchored `sed` substitutions, same
-safety property).
+**Post-execution correction (leave this note for anyone re-reading the plan):** the steps
+below, as originally written, included a "dedent the block between the tags by one level"
+instruction, on the mistaken assumption that removing `<AppShell>` also removes a nesting
+level. It doesn't — `<>` occupies the exact same structural position `<AppShell>` did, so its
+children need to stay at their *original* indentation, one level deeper than `<>` itself. This
+was caught by code review after Task 2 actually ran, and the resulting over-dedented
+indentation in all 6 files below was corrected by hand afterward (commit `099a6bf`) rather
+than by re-running a fixed version of these steps. The dedent line numbers quoted in each step
+heading below are historical (they describe what was originally, incorrectly, done) — do not
+re-run them. Task 3 was corrected in the plan itself before execution and never had this bug.
+
+For each file: `git mv` into `(app)/`, remove the `AppShell` import, the `requireStaffUser`
+import, and the `staffUser` assignment (content-anchored `sed` deletions, line-number-safe),
+then replace the two `<AppShell>`/`</AppShell>` lines with `<>`/`</>` (content-anchored `sed`
+substitutions, same safety property) — **no dedent step**.
 
 **Files:**
 - Move: `apps/ops-console/app/billing/new/page.tsx` → `apps/ops-console/app/(app)/billing/new/page.tsx`
@@ -338,11 +346,26 @@ stop and report rather than force-adding blindly.)
 
 ### Task 3: Move + strip 6 more routes (batch B, including the one special case)
 
-Same recipe as Task 2 for 5 of these (including the `<>`/`</>` Fragment substitution — these
-files also have 2+ top-level children). The 6th, `providers/[id]/page.tsx`, is the one file
-where `staffUser` is used for more than the `AppShell` prop (`isApprover` on line 165) — its
-recipe **keeps** the `requireStaffUser` import and the `staffUser` assignment, only removing
-the `AppShell` import and replacing the two wrapper tags with `<>`/`</>`.
+Same recipe as Task 2 for 5 of these — **except no dedent step**. Task 2's own execution found
+a real bug in the original recipe: `<>` occupies the exact same structural position
+`<AppShell>` did (still a real wrapping element), so its children must stay at their
+*original* indentation, one level deeper than `<>` itself — dedenting them was wrong and has
+already been reverted across all 6 Task 2 files. Do not dedent anything in this task; only
+`git mv`, remove the 3 now-unused lines (content-anchored, line-number-safe), and replace the
+two wrapper tags with `<>`/`</>` in place.
+
+The 6th, `providers/[id]/page.tsx`, is the one file where `staffUser` is used for more than
+the `AppShell` prop (`isApprover` on line 165) — its recipe **keeps** the `requireStaffUser`
+import and the `staffUser` assignment, only removing the `AppShell` import and replacing the
+two wrapper tags with `<>`/`</>`.
+
+**Also check for co-located sibling files.** Task 2 found that some route folders have
+`actions.ts` and/or a form component the `page.tsx` imports via a relative path (`./actions`,
+`./some-form`) — moving only `page.tsx` breaks those imports. Before moving each file below,
+run `ls` on its current directory; if there are sibling files beyond `page.tsx`, move the
+whole directory's contents together (`git mv` each sibling file too, into the same new path)
+so relative imports keep resolving. Typecheck at the end of this task will catch anything
+missed, but check proactively rather than relying on that alone.
 
 **Files:**
 - Move: `apps/ops-console/app/visits/[id]/log/page.tsx` → `apps/ops-console/app/(app)/visits/[id]/log/page.tsx`
@@ -352,12 +375,11 @@ the `AppShell` import and replacing the two wrapper tags with `<>`/`</>`.
 - Move: `apps/ops-console/app/visits/new/page.tsx` → `apps/ops-console/app/(app)/visits/new/page.tsx`
 - Move: `apps/ops-console/app/providers/[id]/page.tsx` → `apps/ops-console/app/(app)/providers/[id]/page.tsx`
 
-- [ ] **Step 1: `visits/[id]/log/page.tsx`** (opening line 44, closing line 52 — dedent range 45-51)
+- [ ] **Step 1: `visits/[id]/log/page.tsx`** (plus any sibling files in that directory)
 
 ```bash
 git mv "apps/ops-console/app/visits/[id]/log/page.tsx" "apps/ops-console/app/(app)/visits/[id]/log/page.tsx"
 F="apps/ops-console/app/(app)/visits/[id]/log/page.tsx"
-sed -i '' '45,51s/^  //' "$F"
 sed -i '' '/^import { AppShell } from "@\/components\/app-shell";$/d' "$F"
 sed -i '' '/^import { requireStaffUser } from "@\/lib\/auth";$/d' "$F"
 sed -i '' '/^  const staffUser = await requireStaffUser();$/d' "$F"
@@ -365,12 +387,11 @@ sed -i '' 's/^    <AppShell user={staffUser}>$/    <>/' "$F"
 sed -i '' 's/^    <\/AppShell>$/    <\/>/' "$F"
 ```
 
-- [ ] **Step 2: `roster/coverage/page.tsx`** (opening line 248, closing line 347 — dedent range 249-346)
+- [ ] **Step 2: `roster/coverage/page.tsx`** (plus any sibling files in that directory)
 
 ```bash
 git mv "apps/ops-console/app/roster/coverage/page.tsx" "apps/ops-console/app/(app)/roster/coverage/page.tsx"
 F="apps/ops-console/app/(app)/roster/coverage/page.tsx"
-sed -i '' '249,346s/^  //' "$F"
 sed -i '' '/^import { AppShell } from "@\/components\/app-shell";$/d' "$F"
 sed -i '' '/^import { requireStaffUser } from "@\/lib\/auth";$/d' "$F"
 sed -i '' '/^  const staffUser = await requireStaffUser();$/d' "$F"
@@ -378,12 +399,11 @@ sed -i '' 's/^    <AppShell user={staffUser}>$/    <>/' "$F"
 sed -i '' 's/^    <\/AppShell>$/    <\/>/' "$F"
 ```
 
-- [ ] **Step 3: `providers/page.tsx`** (opening line 220, closing line 319 — dedent range 221-318)
+- [ ] **Step 3: `providers/page.tsx`** (plus any sibling files in that directory)
 
 ```bash
 git mv "apps/ops-console/app/providers/page.tsx" "apps/ops-console/app/(app)/providers/page.tsx"
 F="apps/ops-console/app/(app)/providers/page.tsx"
-sed -i '' '221,318s/^  //' "$F"
 sed -i '' '/^import { AppShell } from "@\/components\/app-shell";$/d' "$F"
 sed -i '' '/^import { requireStaffUser } from "@\/lib\/auth";$/d' "$F"
 sed -i '' '/^  const staffUser = await requireStaffUser();$/d' "$F"
@@ -391,12 +411,11 @@ sed -i '' 's/^    <AppShell user={staffUser}>$/    <>/' "$F"
 sed -i '' 's/^    <\/AppShell>$/    <\/>/' "$F"
 ```
 
-- [ ] **Step 4: `staff/invite/page.tsx`** (opening line 25, closing line 34 — dedent range 26-33)
+- [ ] **Step 4: `staff/invite/page.tsx`** (plus any sibling files in that directory)
 
 ```bash
 git mv "apps/ops-console/app/staff/invite/page.tsx" "apps/ops-console/app/(app)/staff/invite/page.tsx"
 F="apps/ops-console/app/(app)/staff/invite/page.tsx"
-sed -i '' '26,33s/^  //' "$F"
 sed -i '' '/^import { AppShell } from "@\/components\/app-shell";$/d' "$F"
 sed -i '' '/^import { requireStaffUser } from "@\/lib\/auth";$/d' "$F"
 sed -i '' '/^  const staffUser = await requireStaffUser();$/d' "$F"
@@ -404,12 +423,11 @@ sed -i '' 's/^    <AppShell user={staffUser}>$/    <>/' "$F"
 sed -i '' 's/^    <\/AppShell>$/    <\/>/' "$F"
 ```
 
-- [ ] **Step 5: `visits/new/page.tsx`** (opening line 128, closing line 139 — dedent range 129-138)
+- [ ] **Step 5: `visits/new/page.tsx`** (plus any sibling files in that directory)
 
 ```bash
 git mv "apps/ops-console/app/visits/new/page.tsx" "apps/ops-console/app/(app)/visits/new/page.tsx"
 F="apps/ops-console/app/(app)/visits/new/page.tsx"
-sed -i '' '129,138s/^  //' "$F"
 sed -i '' '/^import { AppShell } from "@\/components\/app-shell";$/d' "$F"
 sed -i '' '/^import { requireStaffUser } from "@\/lib\/auth";$/d' "$F"
 sed -i '' '/^  const staffUser = await requireStaffUser();$/d' "$F"
@@ -417,14 +435,14 @@ sed -i '' 's/^    <AppShell user={staffUser}>$/    <>/' "$F"
 sed -i '' 's/^    <\/AppShell>$/    <\/>/' "$F"
 ```
 
-- [ ] **Step 6: `providers/[id]/page.tsx`** — SPECIAL CASE, keeps `requireStaffUser`/`staffUser`
-      (used at `isApprover = staffUser.roleSlug === ...`). Opening line 177, closing line 542
-      — dedent range 178-541. Only 3 deletions here, not 5:
+- [ ] **Step 6: `providers/[id]/page.tsx`** (plus any sibling files, e.g. `actions.ts`/
+      `constants.ts`, in that directory) — SPECIAL CASE, keeps `requireStaffUser`/`staffUser`
+      (used at `isApprover = staffUser.roleSlug === ...`). Only 3 edits here, not 5, and still
+      no dedent:
 
 ```bash
 git mv "apps/ops-console/app/providers/[id]/page.tsx" "apps/ops-console/app/(app)/providers/[id]/page.tsx"
 F="apps/ops-console/app/(app)/providers/[id]/page.tsx"
-sed -i '' '178,541s/^  //' "$F"
 sed -i '' '/^import { AppShell } from "@\/components\/app-shell";$/d' "$F"
 sed -i '' 's/^    <AppShell user={staffUser}>$/    <>/' "$F"
 sed -i '' 's/^    <\/AppShell>$/    <\/>/' "$F"
@@ -435,10 +453,11 @@ the `const staffUser = await requireStaffUser();` line are both **still present*
 file (they should be untouched — this step's `sed` commands never target them).
 
 - [ ] **Step 7: Read each of the 6 files after editing**, same confirmation as Task 2 Step 7
-      (well-formed JSX, no leftover `AppShell` references). For `providers/[id]/page.tsx`
-      specifically, confirm `requireStaffUser`/`staffUser` are exactly as they were before
-      (only the `AppShell` import and its two wrapper tags removed) and that `isApprover`'s
-      line is untouched.
+      (well-formed JSX with children correctly indented one level deeper than `<>`/`</>`, no
+      leftover `AppShell` references, no orphaned blank line where `const staffUser = ...` used
+      to be). For `providers/[id]/page.tsx` specifically, confirm `requireStaffUser`/
+      `staffUser` are exactly as they were before (only the `AppShell` import and its two
+      wrapper tags changed) and that `isApprover`'s line is untouched.
 
 - [ ] **Step 8: Typecheck**
 
