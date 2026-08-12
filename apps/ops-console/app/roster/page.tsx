@@ -1,4 +1,5 @@
-import { DataTable, PageHeader } from "@carebridge/ui";
+import Link from "next/link";
+import { buttonVariants, DataTable, PageHeader } from "@carebridge/ui";
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -48,7 +49,14 @@ export default async function RosterPage({
 
   return (
     <AppShell user={staffUser} toast={added ? { message: "Roster assignment added." } : undefined}>
-      <PageHeader title="Roster" />
+      <PageHeader
+        title="Roster"
+        actions={
+          <Link href="/roster/coverage" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            View coverage board
+          </Link>
+        }
+      />
       <div className="flex w-full max-w-2xl flex-col gap-6">
         <RosterForm providers={providerOptions} zones={zoneOptions} error={error} />
 
