@@ -32,7 +32,6 @@ function statusBadge(status: string) {
 
 interface SubscriptionRow {
   id: string;
-  clientId: string;
   clientName: string;
   sponsorName: string | null;
   planCode: string;
@@ -72,7 +71,7 @@ export default async function BillingPage({
     subscriptionIds.length > 0
       ? supabase
           .from("invoice")
-          .select("id, subscription_id, status, due_at, created_at")
+          .select("id, subscription_id, status, due_at")
           .in("subscription_id", subscriptionIds)
       : Promise.resolve({ data: [] }),
     Promise.all(clientIds.map(async (id) => [id, await getBillingResponsibleSponsorName(supabase, id)] as const)),
@@ -108,7 +107,6 @@ export default async function BillingPage({
 
   const rows: SubscriptionRow[] = (subscriptions ?? []).map((subscription) => ({
     id: subscription.id,
-    clientId: subscription.client_id,
     clientName: clientNameById.get(subscription.client_id) ?? subscription.client_id,
     sponsorName: sponsorNameByClientId.get(subscription.client_id) ?? null,
     planCode: subscription.plan_code,
