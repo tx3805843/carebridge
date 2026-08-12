@@ -59,7 +59,7 @@ interface VerificationOverrideRow {
   revoked_at: string | null;
 }
 
-// Matches D1's own VERIFICATION_BADGE map in apps/ops-console/app/providers/page.tsx —
+// Matches D1's own VERIFICATION_BADGE map in apps/ops-console/app/(app)/providers/page.tsx —
 // duplicated here rather than shared, same small-array-duplication precedent already
 // established between this file and its own actions.ts (VERIFICATION_STATUSES).
 const VERIFICATION_BADGE: Record<
