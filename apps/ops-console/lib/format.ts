@@ -52,3 +52,20 @@ export function formatPlanName(planCode: string | null | undefined): string {
     .map((word) => word[0]!.toUpperCase() + word.slice(1))
     .join(" ");
 }
+
+// One Intl.NumberFormat instance per currency, cached — construction is the expensive part
+// and a billing page can render dozens of amounts in the same currency in one request.
+// currencyDisplay: "code" renders "GHS 1,200.00" rather than a symbol — avoids $ ambiguity
+// across USD/GBP/EUR and matches this app's existing explicit-over-implicit formatting
+// stance (same reasoning formatDateTime spells out "Accra time (GMT)" rather than relying on
+// an implicit timezone).
+const CURRENCY_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
+export function formatCurrency(amount: number, currency: string): string {
+  let formatter = CURRENCY_FORMATTERS.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-GB", { style: "currency", currency, currencyDisplay: "code" });
+    CURRENCY_FORMATTERS.set(currency, formatter);
+  }
+  return formatter.format(amount);
+}
