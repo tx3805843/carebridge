@@ -72,6 +72,10 @@ export function AppShell({
   );
 }
 
+// Render as a child anywhere within a page wrapped by AppShell (e.g. via app/(app)/layout.tsx)
+// — fires once on mount for low-stakes confirmations only (see packages/ui's toast.tsx doc
+// comment on when NOT to use this). Works because it only needs ToastProvider's context, which
+// AppShell already establishes above it in the tree; it doesn't need to be a direct child.
 export function ToastEffect({ toast }: { toast?: { message: string; variant?: ToastVariant } }) {
   const { showToast } = useToast();
   const shown = React.useRef(false);
