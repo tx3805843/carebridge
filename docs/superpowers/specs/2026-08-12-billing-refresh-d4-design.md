@@ -125,15 +125,29 @@ none).
 **Split action.** The header's single "Generate invoice" `ConfirmSubmitButton` becomes a
 plain (non-confirm) `Button`, "Create draft invoice" — inserts the `invoice` row only
 (`status: 'draft'`, `due_at` computed the same +7-days way as today), no payment row, no
-processor call, no WhatsApp send. Each `draft`-status invoice card additionally gets its own
-"Send payment request" `ConfirmSubmitButton` (same confirm copy `generateInvoice` uses today),
-rendered only when `canSendPaymentRequest` is true for that invoice's payments — this is what
-closes the review's duplicate-protection/retry ask: a fresh draft has no payments (button
-shows), a `sent`/`paid` invoice's latest payment is `pending`/`succeeded` (button hidden,
-can't double-fire), and a `failed` payment leaves the button visible so staff can retry by
-firing the same action again (which creates a fresh `payment` row — the old failed one stays
+processor call, no WhatsApp send. Every invoice card additionally gets its own "Send payment
+request" `ConfirmSubmitButton` (same confirm copy `generateInvoice` uses today), rendered only
+when **both** the invoice's status is `draft` or `sent` (excludes `paid`/`void` explicitly —
+`canSendPaymentRequest` alone would wrongly allow a never-invoiced `void` invoice through,
+since a voided invoice with zero payments would otherwise read as "no payment yet") **and**
+`canSendPaymentRequest` is true for that invoice's payments — this is what closes the review's
+duplicate-protection/retry ask: a fresh `draft` has no payments (button shows), a `sent`
+invoice whose latest payment is `pending` (button hidden, can't double-fire — and a
+`succeeded` payment always accompanies the webhook flipping the invoice to `paid` in the same
+update, per `supabase/functions/paystack-webhook/index.ts`, so a `sent` invoice with a
+`succeeded` payment shouldn't occur in practice, but the guard covers it either way), and a
+`sent` invoice whose latest payment is `failed` leaves the button visible so staff can retry
+by firing the same action again (which creates a fresh `payment` row — the old failed one
+stays
 as history, matching this app's existing revoke-not-delete convention for `authority_grant`
 etc.).
+
+Neither webhook (`paystack-webhook`/`stripe-webhook`) ever writes `payment.status = 'failed'`
+today — only `'succeeded'` (paystack) or nothing (a failure just leaves it `'pending'`
+forever). The retry path above is real (the guard logic is correct for when a `failed` row
+exists, and a future webhook enhancement or manual correction could produce one) but currently
+unreachable via any live code path — verifying it requires a temporary SQL edit, same as D1's
+"Expiring" state had no seeded row and needed one.
 
 ## `apps/ops-console/app/billing/[id]/actions.ts`: the split
 
@@ -186,8 +200,8 @@ Same bar as prior increments — real local Postgres, not just typechecked:
    (`f8000000-…-02`) also shows no button (a `pending` payment blocks re-send, not just
    `succeeded`).
 4. Create a draft invoice on a subscription with none, confirm it lands `status='draft'` with
-   no `payment` row and no WhatsApp send (check `notification_log` or equivalent, or simply
-   confirm no payment row exists), confirm its "Send payment request" button *is* present.
+   no `payment` row and no new `whatsapp_message_log` row, confirm its "Send payment request"
+   button *is* present.
 5. Click "Send payment request" on that draft, confirm the existing generateInvoice behavior
    still fires end-to-end (payment row created, invoice flips to `sent`,
    redirect `?generated=1`), then confirm the button disappears on reload.
@@ -195,6 +209,9 @@ Same bar as prior increments — real local Postgres, not just typechecked:
    that now-`sent` invoice; confirm the server rejects it (no second `payment` row created,
    error surfaced) — the actual proof duplicate-protection is server-enforced, not just
    button-hidden.
-7. Confirm all 5 filter chips produce the expected row sets against the ground-truth grid
+7. Temporarily `update payment set status = 'failed' where id = ...` on that invoice's payment
+   (reverted after); confirm the "Send payment request" button reappears on that `sent`
+   invoice, and that firing it again creates a second `payment` row without touching the first.
+8. Confirm all 5 filter chips produce the expected row sets against the ground-truth grid
    above.
-8. `pnpm --filter ops-console typecheck` and `lint` clean.
+9. `pnpm --filter ops-console typecheck` and `lint` clean.
