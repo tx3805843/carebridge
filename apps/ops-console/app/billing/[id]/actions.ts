@@ -134,6 +134,17 @@ export async function sendPaymentRequest(invoiceId: string, _formData: FormData)
   });
 
   if (paymentError) {
+    // 23505 = unique_violation on payment_one_inflight_per_invoice
+    // (20260812065728_payment_one_inflight_per_invoice.sql) — the real, database-enforced
+    // guard against a concurrent duplicate send: the canSendPaymentRequest check above and
+    // this insert are two separate round trips, so a near-simultaneous second call (a
+    // double-click, or two staff tabs on the same invoice) could pass that check before this
+    // insert lands. The index catches what the application-level check alone can't.
+    if (paymentError.code === "23505") {
+      redirect(
+        `/billing/${invoice.subscription_id}?error=${encodeURIComponent("A payment request has already been sent for this invoice.")}`,
+      );
+    }
     redirect(
       `/billing/${invoice.subscription_id}?error=${encodeURIComponent(`Payment record failed: ${paymentError.message}`)}`,
     );
