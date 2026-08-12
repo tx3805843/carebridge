@@ -1,7 +1,5 @@
 import { PageHeader } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/app-shell";
 import { getBlockedReasons, getCurrentZoneId, type ProviderEligibilityProfile } from "@/lib/provider-eligibility";
 import { VisitForm } from "./visit-form";
 
@@ -10,7 +8,6 @@ export default async function NewVisitPage({
 }: {
   searchParams: Promise<{ error?: string; visitScheduled?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { error, visitScheduled } = await searchParams;
 
   const supabase = await createClient();
@@ -125,7 +122,7 @@ export default async function NewVisitPage({
   }
 
   return (
-    <AppShell user={staffUser}>
+    <>
       <PageHeader title="Schedule a visit" />
       {visitScheduled ? <p className="mb-4 text-sm text-success">Visit scheduled.</p> : null}
       <VisitForm
@@ -136,6 +133,6 @@ export default async function NewVisitPage({
         visitsByProviderId={visitsByProviderId}
         error={error}
       />
-    </AppShell>
+    </>
   );
 }

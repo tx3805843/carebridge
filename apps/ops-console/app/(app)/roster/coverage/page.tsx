@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { Button, buttonVariants, cn, DataTable, PageHeader, StatusBadge } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/app-shell";
 import { getBlockedReasons, type ProviderEligibilityProfile } from "@/lib/provider-eligibility";
 import {
   computeZoneCoverage,
@@ -107,7 +105,6 @@ export default async function RosterCoveragePage({
 }: {
   searchParams: Promise<{ week?: string; view?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { week: weekParam, view: viewParam } = await searchParams;
   const view: ViewMode = viewParam === "table" ? "table" : "board";
 
@@ -245,7 +242,7 @@ export default async function RosterCoveragePage({
   ];
 
   return (
-    <AppShell user={staffUser}>
+    <>
       <PageHeader
         title="Roster coverage"
         description={`Week of ${selectedWeek}`}
@@ -344,6 +341,6 @@ export default async function RosterCoveragePage({
           ]}
         />
       )}
-    </AppShell>
+    </>
   );
 }

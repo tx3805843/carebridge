@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { Button, buttonVariants, cn, DataTable, PageHeader, StatusBadge } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/app-shell";
 import { getBlockedReasons, getCurrentZoneId, type ProviderEligibilityProfile } from "@/lib/provider-eligibility";
 import {
   EXPIRY_WARNING_DAYS,
@@ -58,7 +56,6 @@ export default async function ProvidersPage({
 }: {
   searchParams: Promise<{ q?: string; filter?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { q = "", filter } = await searchParams;
   const activeFilter: FilterValue | undefined =
     filter === "expiring" || filter === "missing" || filter === "blocked" ? filter : undefined;
@@ -217,7 +214,7 @@ export default async function ProvidersPage({
       );
 
   return (
-    <AppShell user={staffUser}>
+    <>
       <PageHeader
         title="Providers"
         actions={
@@ -316,6 +313,6 @@ export default async function ProvidersPage({
           },
         ]}
       />
-    </AppShell>
+    </>
   );
 }

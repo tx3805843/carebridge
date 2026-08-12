@@ -3,7 +3,6 @@ import { Button, ConfirmSubmitButton, DataTable, EntitySummaryCard, StatusBadge 
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
-import { AppShell } from "@/components/app-shell";
 import { EXPIRY_WARNING_DAYS, getProviderVerificationBadges, type VerificationState } from "@/lib/provider-verification-status";
 import { OVERRIDE_SIGNAL_LABEL, OVERRIDE_SIGNALS } from "./constants";
 import {
@@ -174,7 +173,7 @@ export default async function ProviderDetailPage({
   const boundAddTraining = addTrainingRecord.bind(null, provider.id);
 
   return (
-    <AppShell user={staffUser}>
+    <>
       <EntitySummaryCard
         title={user?.full_name ?? "Unnamed provider"}
         subtitle={`${user?.email ?? "no email"} · ${user?.phone ?? "no phone"}`}
@@ -539,6 +538,6 @@ export default async function ProviderDetailPage({
           </Button>
         </form>
       </section>
-    </AppShell>
+    </>
   );
 }

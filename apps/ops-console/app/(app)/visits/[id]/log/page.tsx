@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import { EntitySummaryCard } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
-import { AppShell } from "@/components/app-shell";
 import { LogVisitForm } from "./log-form";
 import { logVisitOutcome } from "./actions";
 
@@ -14,7 +12,6 @@ export default async function LogVisitPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { id } = await params;
   const { error } = await searchParams;
 
@@ -42,13 +39,13 @@ export default async function LogVisitPage({
   const boundAction = logVisitOutcome.bind(null, visit.id);
 
   return (
-    <AppShell user={staffUser}>
+    <>
       <EntitySummaryCard
         title="Log visit outcome"
         subtitle={`${client?.full_name ?? "Unknown client"} with ${providerName ?? "unknown provider"}`}
         meta={[{ label: "Scheduled", value: formatDateTime(visit.scheduled_start) }]}
       />
       <LogVisitForm action={boundAction} error={error} />
-    </AppShell>
+    </>
   );
 }
