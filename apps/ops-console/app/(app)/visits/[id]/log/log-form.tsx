@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, StatusBadge } from "@carebridge/ui";
-import { RESPONSE_TARGET_MINUTES, SEVERITY_BADGE_VARIANT, SEVERITY_LABEL } from "@/app/exceptions/constants";
+import { RESPONSE_TARGET_MINUTES, SEVERITY_BADGE_VARIANT, SEVERITY_LABEL } from "@/app/(app)/exceptions/constants";
 
 const CONCERN_SEVERITIES = ["high", "medium", "low"] as const;
 

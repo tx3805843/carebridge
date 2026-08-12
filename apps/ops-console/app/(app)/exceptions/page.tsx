@@ -3,7 +3,7 @@ import { Button, ConfirmSubmitButton, DataTable, EntitySummaryCard, PageHeader, 
 import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatDateTime, formatRelativeAge } from "@/lib/format";
-import { AppShell } from "@/components/app-shell";
+import { ToastEffect } from "@/components/app-shell";
 import { acknowledgeEscalation, assignEscalation, resolveEscalation } from "./actions";
 import {
   CRITICAL_RESOLVER_ROLE_SLUGS,
@@ -167,16 +167,16 @@ export default async function ExceptionsPage({
   const canResolveCritical = CRITICAL_RESOLVER_ROLE_SLUGS.includes(staffUser.roleSlug);
 
   return (
-    <AppShell
-      user={staffUser}
-      toast={
-        acknowledged
-          ? { message: "Escalation acknowledged." }
-          : assigned
-            ? { message: "Case assigned." }
-            : undefined
-      }
-    >
+    <>
+      <ToastEffect
+        toast={
+          acknowledged
+            ? { message: "Escalation acknowledged." }
+            : assigned
+              ? { message: "Case assigned." }
+              : undefined
+        }
+      />
       <PageHeader
         title="Exception queue"
         description="Safety and service exceptions ordered by severity and response target."
@@ -472,6 +472,6 @@ export default async function ExceptionsPage({
           </div>
         </section>
       </div>
-    </AppShell>
+    </>
   );
 }

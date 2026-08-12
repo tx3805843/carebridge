@@ -23,20 +23,15 @@ const NAV_ITEMS = [
 
 export function AppShell({
   user,
-  toast,
   children,
 }: {
   user: { fullName: string; roleLabel: string };
-  // Fires once on mount via ToastEffect below — for low-stakes confirmations only (see
-  // components/toast.tsx's own doc comment on when NOT to use this).
-  toast?: { message: string; variant?: ToastVariant };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
 
   return (
     <ToastProvider>
-      <ToastEffect toast={toast} />
       <div className="flex min-h-screen">
         <aside className="flex w-60 shrink-0 flex-col gap-1 bg-brand-800 p-4 text-white">
           <Link href="/dashboard" className="mb-4 px-2 text-sm font-semibold tracking-wide">
@@ -77,7 +72,7 @@ export function AppShell({
   );
 }
 
-function ToastEffect({ toast }: { toast?: { message: string; variant?: ToastVariant } }) {
+export function ToastEffect({ toast }: { toast?: { message: string; variant?: ToastVariant } }) {
   const { showToast } = useToast();
   const shown = React.useRef(false);
 

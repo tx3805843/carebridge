@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { buttonVariants, DataTable, PageHeader } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/app-shell";
+import { ToastEffect } from "@/components/app-shell";
 import { RosterForm } from "./roster-form";
 
 interface RosterRow {
@@ -17,7 +16,6 @@ export default async function RosterPage({
 }: {
   searchParams: Promise<{ error?: string; added?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { error, added } = await searchParams;
 
   const supabase = await createClient();
@@ -48,7 +46,8 @@ export default async function RosterPage({
   const zoneLabelById = new Map(zoneOptions.map((zone) => [zone.id, zone.label]));
 
   return (
-    <AppShell user={staffUser} toast={added ? { message: "Roster assignment added." } : undefined}>
+    <>
+      <ToastEffect toast={added ? { message: "Roster assignment added." } : undefined} />
       <PageHeader
         title="Roster"
         actions={
@@ -71,6 +70,6 @@ export default async function RosterPage({
           ]}
         />
       </div>
-    </AppShell>
+    </>
   );
 }

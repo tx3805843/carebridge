@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { buttonVariants, DataTable, PageHeader } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
-import { AppShell } from "@/components/app-shell";
+import { ToastEffect } from "@/components/app-shell";
 
 interface VisitRow {
   id: string;
@@ -18,7 +17,6 @@ export default async function VisitsToLogPage({
 }: {
   searchParams: Promise<{ logged?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { logged } = await searchParams;
 
   const supabase = await createClient();
@@ -54,7 +52,8 @@ export default async function VisitsToLogPage({
   );
 
   return (
-    <AppShell user={staffUser} toast={logged ? { message: "Visit outcome logged." } : undefined}>
+    <>
+      <ToastEffect toast={logged ? { message: "Visit outcome logged." } : undefined} />
       <PageHeader title="Log a visit" />
       <div className="w-full max-w-2xl">
         <DataTable<VisitRow>
@@ -78,6 +77,6 @@ export default async function VisitsToLogPage({
           ]}
         />
       </div>
-    </AppShell>
+    </>
   );
 }

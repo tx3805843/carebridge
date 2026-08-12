@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { Button, ConfirmSubmitButton, EntitySummaryCard, StatusBadge } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDate, formatDateTime, formatPlanName } from "@/lib/format";
 import { getBillingResponsibleSponsorName } from "@/lib/billing";
@@ -12,7 +11,7 @@ import {
   PAYMENT_STATUS_LABEL,
   PAYMENT_STATUS_VARIANT,
 } from "@/lib/billing-status";
-import { AppShell } from "@/components/app-shell";
+import { ToastEffect } from "@/components/app-shell";
 import { createDraftInvoice, sendPaymentRequest } from "./actions";
 
 interface InvoicePayment {
@@ -50,7 +49,6 @@ export default async function SubscriptionDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; created?: string; draftCreated?: string; generated?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { id } = await params;
   const { error, created, draftCreated, generated } = await searchParams;
 
@@ -93,7 +91,8 @@ export default async function SubscriptionDetailPage({
   const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
-    <AppShell user={staffUser} toast={created ? { message: "Subscription created." } : undefined}>
+    <>
+      <ToastEffect toast={created ? { message: "Subscription created." } : undefined} />
       <EntitySummaryCard
         title={client?.full_name ?? "Unknown client"}
         meta={[
@@ -181,6 +180,6 @@ export default async function SubscriptionDetailPage({
           </div>
         )}
       </section>
-    </AppShell>
+    </>
   );
 }
