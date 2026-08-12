@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { buttonVariants, cn, DataTable, PageHeader, StatusBadge } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatPlanName } from "@/lib/format";
 import { getBillingResponsibleSponsorName } from "@/lib/billing";
 import { getAttentionReasons, SUBSCRIPTION_STATUS_LABEL, SUBSCRIPTION_STATUS_VARIANT } from "@/lib/billing-status";
-import { AppShell } from "@/components/app-shell";
 
 type FilterValue = "attention" | "active" | "paused" | "cancelled";
 
@@ -47,7 +45,6 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<{ filter?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { filter } = await searchParams;
   const activeFilter: FilterValue | undefined =
     filter === "attention" || filter === "active" || filter === "paused" || filter === "cancelled"
@@ -128,65 +125,65 @@ export default async function BillingPage({
       : rows.filter((row) => row.status === activeFilter);
 
   return (
-    <AppShell user={staffUser}>
-      <PageHeader
-        title="Billing"
-        actions={
-          <Link href="/billing/new" className={buttonVariants()}>
-            New subscription
-          </Link>
-        }
-      />
+    <>
+    <PageHeader
+      title="Billing"
+      actions={
+        <Link href="/billing/new" className={buttonVariants()}>
+          New subscription
+        </Link>
+      }
+    />
 
-      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Subscription filter">
-        {FILTERS.map((option) => (
-          <Link
-            key={option.value ?? "all"}
-            href={buildHref(option.value)}
-            role="tab"
-            aria-selected={activeFilter === option.value}
-            className={cn(
-              "rounded-md border border-border px-3 py-1.5 text-sm",
-              activeFilter === option.value ? "bg-primary text-primary-foreground" : "hover:bg-muted",
-            )}
-          >
-            {option.label}
-          </Link>
-        ))}
-      </div>
+    <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Subscription filter">
+      {FILTERS.map((option) => (
+        <Link
+          key={option.value ?? "all"}
+          href={buildHref(option.value)}
+          role="tab"
+          aria-selected={activeFilter === option.value}
+          className={cn(
+            "rounded-md border border-border px-3 py-1.5 text-sm",
+            activeFilter === option.value ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+          )}
+        >
+          {option.label}
+        </Link>
+      ))}
+    </div>
 
-      <DataTable<SubscriptionRow>
-        rows={filteredRows}
-        rowKey={(row) => row.id}
-        emptyMessage={(subscriptions ?? []).length === 0 ? "No subscriptions yet." : "No subscriptions match this filter."}
-        columns={[
-          {
-            key: "client",
-            header: "Client",
-            render: (row) => (
-              <Link href={`/billing/${row.id}`} className="underline">
-                {row.clientName}
-              </Link>
-            ),
-          },
-          { key: "sponsor", header: "Sponsor", render: (row) => row.sponsorName ?? "—" },
-          { key: "plan", header: "Plan", render: (row) => formatPlanName(row.planCode) },
-          { key: "amount", header: "Amount", render: (row) => formatCurrency(row.amount, row.currency) },
-          { key: "interval", header: "Interval", render: (row) => row.billingInterval },
-          {
-            key: "status",
-            header: "Status",
-            render: (row) => (
-              <div className="flex flex-wrap items-center gap-2">
-                {statusBadge(row.status)}
-                {row.attentionReasons.length > 0 ? (
-                  <span className="text-xs text-critical">{row.attentionReasons.join("; ")}</span>
-                ) : null}
-              </div>
-            ),
-          },
-        ]}
-      />
-    </AppShell>
+    <DataTable<SubscriptionRow>
+      rows={filteredRows}
+      rowKey={(row) => row.id}
+      emptyMessage={(subscriptions ?? []).length === 0 ? "No subscriptions yet." : "No subscriptions match this filter."}
+      columns={[
+        {
+          key: "client",
+          header: "Client",
+          render: (row) => (
+            <Link href={`/billing/${row.id}`} className="underline">
+              {row.clientName}
+            </Link>
+          ),
+        },
+        { key: "sponsor", header: "Sponsor", render: (row) => row.sponsorName ?? "—" },
+        { key: "plan", header: "Plan", render: (row) => formatPlanName(row.planCode) },
+        { key: "amount", header: "Amount", render: (row) => formatCurrency(row.amount, row.currency) },
+        { key: "interval", header: "Interval", render: (row) => row.billingInterval },
+        {
+          key: "status",
+          header: "Status",
+          render: (row) => (
+            <div className="flex flex-wrap items-center gap-2">
+              {statusBadge(row.status)}
+              {row.attentionReasons.length > 0 ? (
+                <span className="text-xs text-critical">{row.attentionReasons.join("; ")}</span>
+              ) : null}
+            </div>
+          ),
+        },
+      ]}
+    />
+    </>
   );
 }

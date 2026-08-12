@@ -1,7 +1,5 @@
 import { PageHeader } from "@carebridge/ui";
-import { requireStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/app-shell";
 import { ProviderOnboardForm } from "./provider-form";
 
 export default async function NewProviderPage({
@@ -9,7 +7,6 @@ export default async function NewProviderPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const staffUser = await requireStaffUser();
   const { error } = await searchParams;
 
   const supabase = await createClient();
@@ -32,9 +29,9 @@ export default async function NewProviderPage({
     .map((user) => ({ id: user.id, label: `${user.full_name} (${user.email ?? "no email"})` }));
 
   return (
-    <AppShell user={staffUser}>
-      <PageHeader title="Onboard a provider" />
-      <ProviderOnboardForm users={userOptions} error={error} />
-    </AppShell>
+    <>
+    <PageHeader title="Onboard a provider" />
+    <ProviderOnboardForm users={userOptions} error={error} />
+    </>
   );
 }
