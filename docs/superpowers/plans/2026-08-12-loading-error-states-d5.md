@@ -491,9 +491,18 @@ either half alone leaves the other half failing to typecheck.
 **Files:**
 - Modify: `apps/ops-console/components/app-shell.tsx`
 - Move + modify: `apps/ops-console/app/billing/[id]/page.tsx` → `apps/ops-console/app/(app)/billing/[id]/page.tsx`
+  (plus sibling `apps/ops-console/app/billing/[id]/actions.ts` — `git mv` unmodified)
 - Move + modify: `apps/ops-console/app/roster/page.tsx` → `apps/ops-console/app/(app)/roster/page.tsx`
+  (plus siblings `apps/ops-console/app/roster/actions.ts` and
+  `apps/ops-console/app/roster/roster-form.tsx` — `git mv` unmodified)
 - Move + modify: `apps/ops-console/app/visits/log/page.tsx` → `apps/ops-console/app/(app)/visits/log/page.tsx`
+  (no siblings — this directory contains only `page.tsx`)
 - Move + modify: `apps/ops-console/app/exceptions/page.tsx` → `apps/ops-console/app/(app)/exceptions/page.tsx`
+  (plus siblings `apps/ops-console/app/exceptions/actions.ts`, `constants.ts`, `utils.ts` —
+  `git mv` unmodified)
+
+(Confirmed by directly listing each directory before writing this plan section — Tasks 2/3
+found this same sibling-file gap the hard way; it's accounted for here up front instead.)
 
 - [ ] **Step 1: `app-shell.tsx` — drop the `toast` prop, export `ToastEffect`**
 
@@ -555,6 +564,7 @@ export function ToastEffect({ toast }: { toast?: { message: string; variant?: To
 
 ```bash
 git mv "apps/ops-console/app/billing/[id]/page.tsx" "apps/ops-console/app/(app)/billing/[id]/page.tsx"
+git mv "apps/ops-console/app/billing/[id]/actions.ts" "apps/ops-console/app/(app)/billing/[id]/actions.ts"
 ```
 
 Change the import line:
@@ -611,6 +621,8 @@ prop — confirm this is still true after the edits above before deleting; it sh
 
 ```bash
 git mv "apps/ops-console/app/roster/page.tsx" "apps/ops-console/app/(app)/roster/page.tsx"
+git mv "apps/ops-console/app/roster/actions.ts" "apps/ops-console/app/(app)/roster/actions.ts"
+git mv "apps/ops-console/app/roster/roster-form.tsx" "apps/ops-console/app/(app)/roster/roster-form.tsx"
 ```
 
 Same pattern. Import line `import { AppShell } from "@/components/app-shell";` →
@@ -675,6 +687,9 @@ requireStaffUser();` line (same confirmation as Steps 2-3).
 
 ```bash
 git mv "apps/ops-console/app/exceptions/page.tsx" "apps/ops-console/app/(app)/exceptions/page.tsx"
+git mv "apps/ops-console/app/exceptions/actions.ts" "apps/ops-console/app/(app)/exceptions/actions.ts"
+git mv "apps/ops-console/app/exceptions/constants.ts" "apps/ops-console/app/(app)/exceptions/constants.ts"
+git mv "apps/ops-console/app/exceptions/utils.ts" "apps/ops-console/app/(app)/exceptions/utils.ts"
 ```
 
 Import line: `import { AppShell } from "@/components/app-shell";` →
