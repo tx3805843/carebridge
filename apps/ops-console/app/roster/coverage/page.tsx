@@ -20,6 +20,14 @@ type ViewMode = "board" | "table";
 
 const WEEK_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+// Shape-valid (WEEK_PATTERN) doesn't mean calendar-valid — "2026-13-45" passes the regex but
+// new Date("2026-13-45T...").toISOString() throws RangeError, which would 500 this page for
+// a hand-edited or bookmarked bad URL. isNaN(...getTime()) catches those before they reach
+// shiftWeek/any query below.
+function isValidWeek(week: string): boolean {
+  return WEEK_PATTERN.test(week) && !Number.isNaN(new Date(`${week}T00:00:00Z`).getTime());
+}
+
 function buildHref(week: string, view: ViewMode): string {
   const params = new URLSearchParams({ week, view });
   return `/roster/coverage?${params.toString()}`;
@@ -60,9 +68,16 @@ function employmentBadge(status: string) {
   );
 }
 
+// Same accessible pattern as app/providers/page.tsx's own Blocked badge: `title` alone isn't
+// reliably exposed to screen readers, so the reason text is duplicated as sr-only text.
 function blockedBadge(reasons: string[]) {
   if (reasons.length === 0) return null;
-  return <StatusBadge variant="critical" label="Blocked" title={reasons.join("; ")} />;
+  return (
+    <span title={reasons.join("; ")}>
+      <StatusBadge variant="critical" label="Blocked" />
+      <span className="sr-only">: {reasons.join("; ")}</span>
+    </span>
+  );
 }
 
 function conflictBadge(count: number | null) {
@@ -98,7 +113,7 @@ export default async function RosterCoveragePage({
 
   const supabase = await createClient();
 
-  let selectedWeek = weekParam && WEEK_PATTERN.test(weekParam) ? weekParam : null;
+  let selectedWeek = weekParam && isValidWeek(weekParam) ? weekParam : null;
   if (!selectedWeek) {
     const { data: latestRoster } = await supabase
       .from("roster")
@@ -147,6 +162,9 @@ export default async function RosterCoveragePage({
   const nmcLicensedByProviderId = new Map((verifiedProfiles ?? []).map((vp) => [vp.provider_id, vp.nmc_licensed]));
   const zoneIdByProviderId = new Map((rosterRows ?? []).map((row) => [row.provider_id, row.zone_id]));
   const zoneNameById = new Map((zones ?? []).map((zone) => [zone.id, zone.name]));
+  const providerById = new Map((providers ?? []).map((provider) => [provider.id, provider]));
+  const zoneById = new Map((zones ?? []).map((zone) => [zone.id, zone]));
+  const rosteredProviderIdSet = new Set(rosteredProviderIds);
 
   const visitsByProviderId: Record<string, { scheduled_start: string; scheduled_end: string; status: string }[]> = {};
   for (const visit of visits ?? []) {
@@ -154,7 +172,7 @@ export default async function RosterCoveragePage({
   }
 
   function buildRow(providerId: string, includeWorkload: boolean): CoverageRow | null {
-    const provider = (providers ?? []).find((candidate) => candidate.id === providerId);
+    const provider = providerById.get(providerId);
     if (!provider) return null;
 
     const user = userById.get(provider.user_id);
@@ -170,6 +188,11 @@ export default async function RosterCoveragePage({
       nmcLicensed: nmcLicensedByProviderId.get(providerId) ?? false,
       currentZone: targetZoneId && zoneName ? { id: targetZoneId, name: zoneName } : null,
     };
+    // Target zone = the provider's own zone (their currentZone, sourced from *this week's*
+    // roster row above — not getCurrentZoneId's "most recent regardless of week"), same
+    // own-zone-as-target trick app/providers/page.tsx uses: trivially satisfies the
+    // zone-match branch (a provider can't mismatch their own zone) while an unrostered
+    // provider (currentZone: null) still correctly triggers "not yet rostered to any zone".
     const blockedReasons = getBlockedReasons(profile, profile.currentZone?.id ?? "");
 
     let workload: number | null = null;
@@ -199,7 +222,7 @@ export default async function RosterCoveragePage({
   );
 
   const zoneCards: ZoneCard[] = zoneCoverage.map((coverage) => {
-    const zone = (zones ?? []).find((candidate) => candidate.id === coverage.zoneId);
+    const zone = zoneById.get(coverage.zoneId);
     return {
       zoneId: coverage.zoneId,
       zoneName: zone?.name ?? "Unknown zone",
@@ -211,7 +234,7 @@ export default async function RosterCoveragePage({
   });
 
   const unrostered = (providers ?? [])
-    .filter((provider) => provider.employment_status !== "departed" && !rosteredProviderIds.includes(provider.id))
+    .filter((provider) => provider.employment_status !== "departed" && !rosteredProviderIdSet.has(provider.id))
     .map((provider) => buildRow(provider.id, false))
     .filter((row): row is CoverageRow => row !== null);
 
@@ -243,12 +266,15 @@ export default async function RosterCoveragePage({
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <form action="/roster/coverage" method="get" className="flex items-center gap-2">
           <input type="hidden" name="view" value={view} />
-          <input
-            type="date"
-            name="week"
-            defaultValue={selectedWeek}
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
+          <label className="flex items-center gap-2 text-sm">
+            Week starting
+            <input
+              type="date"
+              name="week"
+              defaultValue={selectedWeek}
+              className="rounded-md border border-border px-3 py-2 text-sm"
+            />
+          </label>
           <Button type="submit" size="sm" variant="outline">
             Go to week
           </Button>
